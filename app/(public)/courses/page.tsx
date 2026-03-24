@@ -125,7 +125,7 @@ export default async function CoursesPage() {
 
                     {/* Thumbnail */}
                     {course.thumbnail_url && (
-                      <div className="relative h-[170px] overflow-hidden rounded-t-[4px] -mx-[30px] -mt-[30px] mb-5">
+                      <div className="crs-thumb relative h-[170px] overflow-hidden rounded-t-[4px]">
                         <Image
                           src={course.thumbnail_url}
                           alt={course.title}
@@ -165,7 +165,7 @@ export default async function CoursesPage() {
                         <span className={modeCls(course.mode)}>{modeLabel(course.mode)}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-[var(--font-fraunces)] text-[1.1rem] font-bold text-[var(--teal2)]">
+                        <span className="font-[var(--font-fraunces)] text-[1.1rem] font-bold text-[var(--teal)]">
                           {course.price === 0 ? "Free" : `KES ${course.price.toLocaleString()}`}
                         </span>
                         <span className="crs-enroll">
