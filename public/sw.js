@@ -1,12 +1,10 @@
 // Ontime Academy — Service Worker
 // Provides offline fallback and caches static assets for PWA
 
-const CACHE_NAME = "ontime-v1";
-const OFFLINE_URL = "/offline";
+const CACHE_NAME = "ontime-v2";
 
-// Assets to pre-cache on install
+// Only cache static/public assets — NOT Next.js HTML pages (they have Cache-Control: no-store)
 const PRECACHE_ASSETS = [
-  "/",
   "/favicon.ico",
   "/favicon-32x32.png",
   "/apple-touch-icon.png",
@@ -56,35 +54,34 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Network-first strategy for HTML pages
-  if (event.request.headers.get("accept")?.includes("text/html")) {
+  // Cache-first for static assets (images, icons, manifest)
+  const isStatic =
+    url.pathname.match(/\.(png|jpg|jpeg|svg|ico|webp|woff2?|css|js)$/) ||
+    url.pathname === "/site.webmanifest";
+
+  if (isStatic) {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          // Cache a clone of the response
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((response) => {
+          if (!response.ok) return response;
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           return response;
-        })
-        .catch(() =>
-          caches
-            .match(event.request)
-            .then((cached) => cached || caches.match("/"))
-        )
+        });
+      })
     );
     return;
   }
 
-  // Cache-first strategy for static assets (images, fonts, etc.)
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((response) => {
-        if (!response.ok) return response;
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        return response;
-      });
-    })
-  );
+  // Network-first for HTML pages — fall back to cache, never fail silently
+  if (event.request.headers.get("accept")?.includes("text/html")) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => response)
+        .catch(() =>
+          caches.match(event.request).then((cached) => cached || fetch(event.request))
+        )
+    );
+  }
 });
