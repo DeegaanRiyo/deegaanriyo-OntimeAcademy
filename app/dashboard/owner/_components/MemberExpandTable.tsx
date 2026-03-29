@@ -27,12 +27,49 @@ function fmtDate(iso: string | null | undefined) {
 
 export default function MemberExpandTable({ members }: { members: MemberRow[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const q = search.trim().toLowerCase();
+  const filtered = members.filter((m) =>
+    !q ||
+    (m.full_name ?? "").toLowerCase().includes(q) ||
+    (m.email ?? "").toLowerCase().includes(q) ||
+    (m.phone ?? "").includes(q) ||
+    (m.sub?.profession ?? "").toLowerCase().includes(q)
+  );
 
   function toggle(id: string) {
     setOpenId(prev => prev === id ? null : id);
   }
 
   return (
+    <div>
+      {/* Search */}
+      <div style={{ padding: "10px 16px 0", maxWidth: "380px" }}>
+        <div style={{ position: "relative" }}>
+          <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--muted)", fontSize: ".8rem", pointerEvents: "none" }} />
+          <input
+            type="text"
+            placeholder="Search by name, email, or phone…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="form-input"
+            style={{ paddingLeft: "34px" }}
+          />
+          {search && (
+            <button onClick={() => setSearch("")} style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: ".8rem" }}>
+              <i className="fas fa-times" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--muted)", fontSize: ".85rem" }}>
+          No results for &ldquo;{search}&rdquo;
+        </div>
+      ) : null}
+
     <div className="tbl-wrap">
       <table>
         <thead>
@@ -47,7 +84,7 @@ export default function MemberExpandTable({ members }: { members: MemberRow[] })
           </tr>
         </thead>
         <tbody>
-          {members.map(m => {
+          {filtered.map(m => {
             const open = openId === m.id;
             const initials = (m.full_name || m.email || "?")
               .split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
@@ -145,6 +182,7 @@ export default function MemberExpandTable({ members }: { members: MemberRow[] })
           })}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

@@ -42,6 +42,29 @@ function initials(name: string | null) {
   return n.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 }
 
+// ─── Search bar ───────────────────────────────────────────────────────────────
+
+function SearchBar({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+  return (
+    <div style={{ position: "relative", maxWidth: "380px" }}>
+      <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--muted)", fontSize: ".8rem", pointerEvents: "none" }} />
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="form-input"
+        style={{ paddingLeft: "34px" }}
+      />
+      {value && (
+        <button onClick={() => onChange("")} style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: ".8rem" }}>
+          <i className="fas fa-times" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Physical tab ─────────────────────────────────────────────────────────────
 
 function PhysicalView({ students }: { students: PhysicalStudent[] }) {
@@ -226,15 +249,37 @@ interface Props {
 }
 
 export default function StudentsTabClient({ physical, online }: Props) {
-  const [tab, setTab] = useState<Tab>("physical");
+  const [tab,    setTab]    = useState<Tab>("physical");
+  const [search, setSearch] = useState("");
+
+  const q = search.trim().toLowerCase();
+
+  const filteredPhysical = physical.filter((s) =>
+    !q || s.name.toLowerCase().includes(q) || s.phone.includes(q) || s.class_name.toLowerCase().includes(q)
+  );
+
+  const filteredOnline = online.filter((s) =>
+    !q ||
+    (s.full_name ?? "").toLowerCase().includes(q) ||
+    (s.email ?? "").toLowerCase().includes(q) ||
+    s.enrolments.some((e) => e.course_title.toLowerCase().includes(q))
+  );
 
   const tabs: { key: Tab; label: string; icon: string; color: string; count: number }[] = [
-    { key: "physical", label: "Physical Classes", icon: "fa-chalkboard-teacher", color: "var(--teal2)", count: physical.length },
-    { key: "online",   label: "Online Students",  icon: "fa-laptop",             color: "#2563eb",      count: online.length   },
+    { key: "physical", label: "Physical Classes", icon: "fa-chalkboard-teacher", color: "var(--teal2)", count: filteredPhysical.length },
+    { key: "online",   label: "Online Students",  icon: "fa-laptop",             color: "#2563eb",      count: filteredOnline.length   },
   ];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+
+      {/* Search */}
+      <SearchBar
+        value={search}
+        onChange={(v) => setSearch(v)}
+        placeholder={tab === "physical" ? "Search by name, phone, or class…" : "Search by name, email, or course…"}
+      />
+
       {/* Toggle */}
       <div style={{ display: "flex", gap: "8px" }}>
         {tabs.map((t) => {
@@ -262,7 +307,26 @@ export default function StudentsTabClient({ physical, online }: Props) {
         })}
       </div>
 
-      {tab === "physical" ? <PhysicalView students={physical} /> : <OnlineView students={online} />}
+      {/* Empty state when search has no results */}
+      {q && tab === "physical" && filteredPhysical.length === 0 && (
+        <div className="card">
+          <div style={{ padding: "48px 20px", textAlign: "center", color: "var(--muted)", fontSize: ".85rem" }}>
+            No results for &ldquo;{search}&rdquo;
+          </div>
+        </div>
+      )}
+      {q && tab === "online" && filteredOnline.length === 0 && (
+        <div className="card">
+          <div style={{ padding: "48px 20px", textAlign: "center", color: "var(--muted)", fontSize: ".85rem" }}>
+            No results for &ldquo;{search}&rdquo;
+          </div>
+        </div>
+      )}
+
+      {tab === "physical"
+        ? ((!q || filteredPhysical.length > 0) && <PhysicalView students={filteredPhysical} />)
+        : ((!q || filteredOnline.length > 0)   && <OnlineView   students={filteredOnline}   />)
+      }
     </div>
   );
 }
