@@ -47,7 +47,7 @@ function waLink(phone: string, name: string, due: string | null) {
     : `Hi ${name}, this is a reminder from Ontime Academy & Co-working Space. Please contact us regarding your upcoming payment. Thank you!`;
   return `https://wa.me/${wa}?text=${encodeURIComponent(msg)}`;
 }
-const METHOD_LABELS: Record<string, string> = { cash: "Cash", bank_transfer: "Bank Transfer" };
+const METHOD_LABELS: Record<string, string> = { cash: "Cash", mpesa: "M-Pesa" };
 
 // ─── Due Badge ────────────────────────────────────────────────────────────────
 
@@ -156,11 +156,11 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
                 <label style={lbl}>Payment Method *</label>
                 <select value={form.method} onChange={set("method")} style={inp}>
                   <option value="cash">Cash</option>
-                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="mpesa">M-Pesa</option>
                 </select>
               </div>
-              {form.method === "bank_transfer" && (
-                <div><label style={lbl}>Bank Reference</label><input value={form.reference} onChange={set("reference")} placeholder="Transaction ref" style={inp} /></div>
+              {form.method === "mpesa" && (
+                <div><label style={lbl}>M-Pesa Code</label><input value={form.reference} onChange={set("reference")} placeholder="e.g. QA12BCD3E4" style={inp} /></div>
               )}
             </div>
             <div style={{ marginTop: "-4px" }}>
@@ -236,11 +236,11 @@ function PaymentModal({ member, onClose, onDone }: { member: Member; onClose: ()
             <label style={{ display: "block", fontSize: ".65rem", fontWeight: 700, textTransform: "uppercase", color: "var(--muted)", marginBottom: "5px" }}>Method</label>
             <select value={method} onChange={(e) => setMethod(e.target.value)} style={inp}>
               <option value="cash">Cash</option>
-              <option value="bank_transfer">Bank Transfer</option>
+              <option value="mpesa">M-Pesa</option>
             </select>
           </div>
-          {method === "bank_transfer" && (
-            <div><label style={{ display: "block", fontSize: ".65rem", fontWeight: 700, textTransform: "uppercase", color: "var(--muted)", marginBottom: "5px" }}>Reference</label><input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="TXN ref" style={inp} /></div>
+          {method === "mpesa" && (
+            <div><label style={{ display: "block", fontSize: ".65rem", fontWeight: 700, textTransform: "uppercase", color: "var(--muted)", marginBottom: "5px" }}>M-Pesa Code</label><input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="e.g. QA12BCD3E4" style={inp} /></div>
           )}
           <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
             <button type="submit" className="btn-primary" disabled={loading || !member.profile_id} style={{ flex: 1, border: "none", cursor: "pointer" }}>
