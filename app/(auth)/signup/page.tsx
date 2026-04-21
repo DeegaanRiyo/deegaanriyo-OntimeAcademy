@@ -52,13 +52,7 @@ function SignupPage() {
 
     if (authError) { setError(authError.message); return; }
 
-    // Email confirmations OFF → session returned immediately → redirect now
-    if (authData.session) {
-      window.location.href = returnTo;
-      return;
-    }
-
-    // Email confirmations ON → show verify screen
+    // Always show the verify screen — email confirmation is required
     setPendingEmail(data.email);
   };
 

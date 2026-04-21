@@ -5,7 +5,12 @@
       "Bash(find C:UsershpDesktopBenghadziQuraacQRCOntimeAcademy -type f \\\\\\(-name *Report* -o -name *report* -o -name *financial* -o -name *expense* \\\\\\))",
       "Read(//c/Users/hp/Desktop/Benghadzi/Quraac/QRC/**)",
       "Bash(find C:/Users/hp/Desktop/Benghadzi/Quraac/QRC/OntimeAcademy -type f \\\\\\(-iname *logo* -o -iname *icon* -o -iname *brand* \\\\\\))",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(xargs find *)",
+      "Bash(npx tsc *)",
+      "Read(//c/Users/hp/Desktop//**)",
+      "Read(//c/Users/hp/Documents//**)",
+      "Read(//c/Users/hp//**)"
     ]
   }
 }

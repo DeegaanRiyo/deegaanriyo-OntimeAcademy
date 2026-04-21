@@ -39,6 +39,10 @@ type ModalState = {
   visitorPhone:  string;
   estimatedCost: number | null;
   totalPaid:     number;
+  spaceName:     string | null;
+  bookingDate:   string;
+  startTime:     string;
+  endTime:       string;
 };
 
 type ColKey = "pending" | "confirmed" | "today" | "active" | "concluded";
@@ -183,17 +187,60 @@ function PaymentFields({
 
 // ─── Payment Modal ────────────────────────────────────────────────────────────
 
+function buildWhatsAppConfirmation(
+  phone: string,
+  name: string,
+  spaceName: string | null,
+  bookingDate: string,
+  startTime: string,
+  endTime: string,
+  amountPaid: number,
+  estimatedCost: number | null,
+): string {
+  const wa = phone.replace(/\D/g, "").replace(/^0/, "254");
+  const fmtDate = new Date(bookingDate + "T12:00:00").toLocaleDateString("en-KE", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
+  const outstanding = estimatedCost !== null ? estimatedCost - amountPaid : null;
+
+  const lines = [
+    `Hi ${name} 👋`,
+    ``,
+    `Your booking at *Ontime Academy & Co-working Space* has been *confirmed!* ✅`,
+    ``,
+    ...(spaceName ? [`🏢 *Space:* ${spaceName}`] : []),
+    `📅 *Date:* ${fmtDate}`,
+    `🕐 *Time:* ${startTime} – ${endTime}`,
+    `💰 *Amount Paid:* KES ${amountPaid.toLocaleString()}`,
+    ...(outstanding !== null && outstanding > 0
+      ? [`⚠️ *Balance Due:* KES ${outstanding.toLocaleString()} (payable on arrival)`]
+      : []),
+    ``,
+    `Please arrive a few minutes early. See you soon! 🙏`,
+  ];
+  return `https://wa.me/${wa}?text=${encodeURIComponent(lines.join("\n"))}`;
+}
+
+type ConfirmedInfo = {
+  amountPaid:    number;
+  spaceName:     string | null;
+  bookingDate:   string;
+  startTime:     string;
+  endTime:       string;
+};
+
 function PaymentModal({ booking, mode, onClose, onDone }: {
   booking: ModalState;
   mode: "confirm" | "record" | "complete";
   onClose: () => void;
   onDone: (id: string, newStatus?: string) => void;
 }) {
-  const [amount,    setAmount]    = useState(String(booking.estimatedCost != null ? Math.max(0, booking.estimatedCost - booking.totalPaid) : ""));
-  const [method,    setMethod]    = useState<"cash" | "bank_transfer">("cash");
-  const [reference, setReference] = useState("");
-  const [loading,   setLoading]   = useState(false);
-  const [error,     setError]     = useState<string | null>(null);
+  const [amount,        setAmount]        = useState(String(booking.estimatedCost != null ? Math.max(0, booking.estimatedCost - booking.totalPaid) : ""));
+  const [method,        setMethod]        = useState<"cash" | "bank_transfer">("cash");
+  const [reference,     setReference]     = useState("");
+  const [loading,       setLoading]       = useState(false);
+  const [error,         setError]         = useState<string | null>(null);
+  const [confirmedInfo, setConfirmedInfo] = useState<ConfirmedInfo | null>(null);
 
   const title = mode === "confirm" ? "Confirm & Record Payment"
               : mode === "complete" ? "Pay & Complete Session"
@@ -232,7 +279,77 @@ function PaymentModal({ booking, mode, onClose, onDone }: {
 
     setLoading(false);
     onDone(booking.bookingId, mode === "confirm" ? "confirmed" : mode === "complete" ? "completed" : undefined);
-    onClose();
+
+    // After confirming a pending booking, show WhatsApp step instead of closing immediately
+    if (mode === "confirm") {
+      setConfirmedInfo({
+        amountPaid:  amt,
+        spaceName:   booking.spaceName ?? null,
+        bookingDate: booking.bookingDate,
+        startTime:   booking.startTime,
+        endTime:     booking.endTime,
+      });
+    } else {
+      onClose();
+    }
+  }
+
+  // ── WhatsApp confirmation screen ──────────────────────────────────────────
+  if (confirmedInfo) {
+    const waURL = buildWhatsAppConfirmation(
+      booking.visitorPhone,
+      booking.visitorName,
+      confirmedInfo.spaceName,
+      confirmedInfo.bookingDate,
+      confirmedInfo.startTime,
+      confirmedInfo.endTime,
+      confirmedInfo.amountPaid,
+      booking.estimatedCost,
+    );
+    return (
+      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: "16px" }} onClick={onClose}>
+        <div className="card" style={{ maxWidth: "440px", width: "100%", padding: "28px", gap: 0, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ fontSize: "2.4rem", color: "#16a34a", marginBottom: "12px" }}>
+            <i className="fas fa-check-circle" />
+          </div>
+          <h3 style={{ margin: "0 0 6px", color: "var(--dark)" }}>Booking Confirmed!</h3>
+          <p style={{ color: "var(--muted)", fontSize: ".83rem", margin: "0 0 20px" }}>
+            Payment of <strong>KES {confirmedInfo.amountPaid.toLocaleString()}</strong> recorded for{" "}
+            <strong>{booking.visitorName}</strong>.
+          </p>
+          <p style={{ color: "var(--muted)", fontSize: ".8rem", margin: "0 0 20px" }}>
+            Send a WhatsApp confirmation to the client now?
+          </p>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <a
+              href={waURL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onClose}
+              style={{
+                flex: 2, display: "inline-flex", alignItems: "center", justifyContent: "center",
+                gap: "8px", padding: "11px 16px", borderRadius: "9px", textDecoration: "none",
+                background: "#16a34a", color: "#fff", fontWeight: 700, fontSize: ".85rem",
+                border: "none", cursor: "pointer",
+              }}
+            >
+              <i className="fab fa-whatsapp" style={{ fontSize: "1.1rem" }} />
+              Send WhatsApp
+            </a>
+            <button
+              onClick={onClose}
+              style={{
+                flex: 1, padding: "11px 16px", borderRadius: "9px", fontWeight: 600,
+                fontSize: ".85rem", background: "transparent", border: "1px solid rgba(17,17,17,.15)",
+                color: "var(--muted)", cursor: "pointer",
+              }}
+            >
+              Skip
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -554,9 +671,20 @@ export default function BookingsManageClient({ bookings: initial, allSpaces, tod
   }
 
   function openPayModal(b: RichBooking, mode: "confirm" | "record" | "complete") {
+    const endTime = b.end_time ?? computeEnd(b.start_time, b.hours ?? 1);
     setPayModal({
       mode,
-      booking: { bookingId: b.id, visitorName: b.visitor_name, visitorPhone: b.visitor_phone, estimatedCost: b.estimated_cost, totalPaid: b.total_paid },
+      booking: {
+        bookingId:     b.id,
+        visitorName:   b.visitor_name,
+        visitorPhone:  b.visitor_phone,
+        estimatedCost: b.estimated_cost,
+        totalPaid:     b.total_paid,
+        spaceName:     b.spaces?.name ?? null,
+        bookingDate:   b.booking_date,
+        startTime:     fmt12(b.start_time),
+        endTime:       fmt12(endTime),
+      },
     });
   }
 

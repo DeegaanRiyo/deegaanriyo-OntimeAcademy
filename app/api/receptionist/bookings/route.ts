@@ -137,14 +137,14 @@ export async function POST(req: NextRequest) {
   const amt = Number(amount_paid);
   if (data && amt > 0 && payment_method) {
     await service.from("walk_in_payments").insert({
-      booking_id:        data.id,
-      member_name:       visitor_name,
-      member_phone:      visitor_phone,
-      amount:            amt,
-      payment_method:    payment_method,
-      payment_reference: payment_reference || null,
-      type:              "booking",
-      recorded_by:       user.id,
+      booking_id:     data.id,
+      customer_name:  visitor_name,
+      customer_phone: visitor_phone,
+      amount:         amt,
+      method:         payment_method,
+      reference:      payment_reference || null,
+      type:           "space_rental",
+      recorded_by:    user.id,
     });
   }
 

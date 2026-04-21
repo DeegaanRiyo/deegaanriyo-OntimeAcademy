@@ -127,6 +127,18 @@ export default async function SpaceDetailPage({
 
   if (error || !space) notFound();
 
+  // Get logged-in user and their profile (for pre-filling the booking form)
+  const { data: { user } } = await supabase.auth.getUser();
+  let userProfile: { full_name: string; email: string; phone: string | null } | null = null;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name, email, phone")
+      .eq("id", user.id)
+      .single();
+    if (profile) userProfile = profile;
+  }
+
   const sp            = space as Space;
   const heroImage     = sp.photos?.[0] ?? placeholderImages[sp.slug] ?? "";
   const pills         = pillsMap[sp.slug] ?? [];
@@ -143,7 +155,7 @@ export default async function SpaceDetailPage({
     <div className="bg-[var(--dark)] text-[var(--white)] min-h-screen">
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <div className="relative h-[460px] overflow-hidden">
+      <div className="relative h-[240px] lg:h-[460px] overflow-hidden">
         <Image
           src={heroImage}
           alt={sp.name}
@@ -179,11 +191,11 @@ export default async function SpaceDetailPage({
       </div>
 
       {/* ── Body ──────────────────────────────────────────────────────────── */}
-      <section className="px-[clamp(20px,6vw,72px)] py-12">
+      <section className="px-[clamp(16px,6vw,72px)] py-6 lg:py-12">
         <div className="max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-10 items-start">
 
           {/* ── LEFT column ─────────────────────────────────────────────── */}
-          <div>
+          <div className="order-2 lg:order-1">
             <div className="text-[.65rem] font-bold tracking-[.2em] uppercase text-[var(--teal2)] mb-2">
               {eyebrow}
             </div>
@@ -191,7 +203,7 @@ export default async function SpaceDetailPage({
               {sp.name}
             </h2>
 
-            <p className="text-[.9rem] text-[var(--muted)] leading-[1.75] mb-6">
+            <p className="text-[.9rem] text-[rgba(255,255,255,.72)] leading-[1.75] mb-6">
               {sp.description ??
                 "A professional space designed for productivity, collaboration, and creativity. Fully equipped and available to book by the hour or for the full day."}
             </p>
@@ -225,7 +237,7 @@ export default async function SpaceDetailPage({
             </div>
 
             {/* Availability schedule */}
-            <SpaceScheduleClient space={sp} />
+            <SpaceScheduleClient space={sp} user={userProfile} />
 
             {/* Photo gallery */}
             <div>
@@ -250,19 +262,17 @@ export default async function SpaceDetailPage({
           </div>
 
           {/* ── RIGHT column — booking card ──────────────────────────────── */}
-          <div className="sticky top-[90px]">
+          <div className="order-1 lg:order-2 sticky top-[90px]">
             <div className="bg-[var(--dark2)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,.4)]">
 
               {/* Card header */}
-              <div className="p-6 border-b border-[var(--border)]">
-                <div className="flex items-start justify-between gap-3 mb-1">
+              <div className="px-5 py-4 border-b border-[var(--border)]">
+                <div className="flex items-center justify-between gap-3">
                   <div>
                     {sp.hourly_rate > 0 ? (
-                      <p className="text-[1.4rem] font-extrabold leading-none m-0">
+                      <p className="text-[1.25rem] font-extrabold leading-none m-0">
                         KES {sp.hourly_rate.toLocaleString()}
-                        <span className="text-[.8rem] font-normal text-[var(--muted)] ml-1">
-                          / hour
-                        </span>
+                        <span className="text-[.78rem] font-normal text-[var(--muted)] ml-1">/ hr</span>
                       </p>
                     ) : (
                       <p className="text-base font-bold text-[var(--muted)] m-0">
@@ -271,27 +281,24 @@ export default async function SpaceDetailPage({
                     )}
                   </div>
                   {sp.is_available ? (
-                    <span className="px-3 py-0.5 rounded-full text-[.65rem] font-bold bg-[rgba(34,197,94,.12)] text-[#86efac] border border-[rgba(34,197,94,.3)] shrink-0">
+                    <span className="px-3 py-0.5 rounded-full text-[.62rem] font-bold bg-[rgba(34,197,94,.12)] text-[#86efac] border border-[rgba(34,197,94,.3)] shrink-0">
                       Available
                     </span>
                   ) : (
-                    <span className="px-3 py-0.5 rounded-full text-[.65rem] font-bold bg-[rgba(239,68,68,.12)] text-[#fca5a5] border border-[rgba(239,68,68,.3)] shrink-0">
+                    <span className="px-3 py-0.5 rounded-full text-[.62rem] font-bold bg-[rgba(239,68,68,.12)] text-[#fca5a5] border border-[rgba(239,68,68,.3)] shrink-0">
                       Occupied
                     </span>
                   )}
                 </div>
-                <p className="text-[var(--muted)] text-[.75rem] mt-2 m-0">
-                  Book instantly via WhatsApp — confirmation within minutes.
-                </p>
               </div>
 
               {/* Booking form */}
-              <div className="p-6">
-                <BookingForm space={sp} />
+              <div className="px-5 py-4">
+                <BookingForm space={sp} user={userProfile} />
               </div>
 
               {/* Footer note */}
-              <div className="px-6 pb-5 flex items-center gap-2">
+              <div className="px-5 pb-4 flex items-center gap-2">
                 <i className="fas fa-shield-alt text-[var(--teal2)] text-[.75rem]" aria-hidden="true" />
                 <p className="text-[.72rem] text-[var(--muted)] m-0">
                   Confirmation within minutes · No deposit required

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import type { Space } from "@/types";
+
+type UserProfile = { full_name: string; email: string; phone: string | null };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -18,6 +21,16 @@ const HOUR_OPTIONS = [
   { value: 7, label: "7 hrs" },
 ];
 
+const PURPOSE_OPTIONS = [
+  { value: "meeting",       label: "Meeting / Boardroom session" },
+  { value: "training",      label: "Training / Workshop" },
+  { value: "podcast",       label: "Podcast / Audio recording" },
+  { value: "content",       label: "Content creation / Photoshoot" },
+  { value: "conference",    label: "Conference / Seminar" },
+  { value: "interview",     label: "Interview / HR session" },
+  { value: "other",         label: "Other" },
+];
+
 function fmt24(h: number): string {
   const ampm = h < 12 ? "AM" : "PM";
   const h12  = h > 12 ? h - 12 : h === 0 ? 12 : h;
@@ -29,7 +42,13 @@ function fmt24Value(h: number): string {
 }
 
 function todayISO(): string {
-  return new Date().toISOString().split("T")[0];
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
+}
+
+function maxISO(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 30);
+  return d.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -49,13 +68,15 @@ type ModalState = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Return true if hour h is occupied by any confirmed/active booking */
-function isOccupied(h: number, bookings: BookingSlot[]): boolean {
-  return bookings.some((b) => {
+/** Return the slot state for a given hour */
+function slotState(h: number, bookings: BookingSlot[]): "free" | "pending" | "booked" {
+  const hit = bookings.find((b) => {
     const startH = parseInt(b.start_time.split(":")[0], 10);
-    const endH   = startH + b.hours;
-    return h >= startH && h < endH;
+    return h >= startH && h < startH + b.hours;
   });
+  if (!hit) return "free";
+  if (hit.status === "pending") return "pending";
+  return "booked";
 }
 
 /** Format YYYY-MM-DD → "Mon, 24 Mar 2025" */
@@ -71,38 +92,34 @@ function formatDateDisplay(iso: string): string {
 function BookingModal({
   space,
   initial,
+  user,
   onClose,
 }: {
-  space: Space;
+  space:   Space;
   initial: ModalState;
+  user:    UserProfile;
   onClose: () => void;
 }) {
-  const [name,     setName]     = useState("");
-  const [phone,    setPhone]    = useState("");
-  const [email,    setEmail]    = useState("");
-  const [date,     setDate]     = useState(initial.date);
+  const [date,      setDate]      = useState(initial.date);
   const [startTime, setStartTime] = useState(initial.start_time);
-  const [hours,    setHours]    = useState(1);
-  const [notes,    setNotes]    = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error,    setError]    = useState<string | null>(null);
-  const [done,     setDone]     = useState(false);
+  const [hours,     setHours]     = useState(1);
+  const [attendees, setAttendees] = useState(1);
+  const [purpose,   setPurpose]   = useState("meeting");
+  const [notes,     setNotes]     = useState("");
+  const [submitting,setSubmitting]= useState(false);
+  const [error,     setError]     = useState<string | null>(null);
+  const [done,      setDone]      = useState(false);
 
-  const startH = parseInt(startTime.split(":")[0], 10);
-  const endH   = startH + hours;
-  const endTooLate = endH > 22; // session must end by 10 PM
+  const startH     = parseInt(startTime.split(":")[0], 10);
+  const endH       = startH + hours;
+  const endTooLate = endH > 22;
 
-  const estimatedCost =
-    space.hourly_rate > 0 ? space.hourly_rate * hours : null;
+  const estimatedCost = space.hourly_rate > 0 ? space.hourly_rate * hours : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !phone.trim() || !date || !startTime) {
-      setError("Please fill in all required fields.");
-      return;
-    }
     if (endTooLate) {
-      setError(`Session would end after 10 PM. Please reduce duration or pick an earlier start time.`);
+      setError("Session would end after 10 PM. Reduce duration or pick an earlier time.");
       return;
     }
     setError(null);
@@ -110,46 +127,41 @@ function BookingModal({
 
     const cost = space.hourly_rate > 0 ? space.hourly_rate * hours : 0;
 
+    // Build a structured notes string so the receptionist sees full context
+    const purposeLabel = PURPOSE_OPTIONS.find((p) => p.value === purpose)?.label ?? purpose;
+    const structuredNote = [
+      `Purpose: ${purposeLabel}`,
+      `Attendees: ${attendees}`,
+      notes.trim() ? `Notes: ${notes.trim()}` : "",
+    ].filter(Boolean).join(" | ");
+
     try {
-      await fetch("/api/bookings", {
-        method: "POST",
+      const res = await fetch("/api/bookings", {
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           space_id:       space.id,
-          visitor_name:   name.trim(),
-          visitor_email:  email.trim() || null,
-          visitor_phone:  phone.trim(),
+          visitor_name:   user.full_name,
+          visitor_email:  user.email,
+          visitor_phone:  user.phone ?? "",
           booking_date:   date,
           start_time:     startTime,
           hours,
           estimated_cost: cost,
+          notes:          structuredNote,
         }),
       });
+      if (!res.ok) {
+        const json = await res.json();
+        setError(json.error ?? "Could not submit booking. Please try again.");
+        setSubmitting(false);
+        return;
+      }
     } catch {
-      // Non-blocking
+      setError("Network error — please check your connection and try again.");
+      setSubmitting(false);
+      return;
     }
-
-    // Build WhatsApp message
-    const h12Start = startH > 12 ? startH - 12 : startH;
-    const ampmStart = startH < 12 ? "AM" : "PM";
-    const h12End   = endH > 12 ? endH - 12 : endH;
-    const ampmEnd  = endH <= 12 ? "AM" : "PM";
-
-    const lines = [
-      `Hi, I'd like to book the *${space.name}* at Ontime Academy.`,
-      ``,
-      `*Name:* ${name.trim()}`,
-      `*Phone:* ${phone.trim()}`,
-      ...(email.trim() ? [`*Email:* ${email.trim()}`] : []),
-      `*Date:* ${date}`,
-      `*Time:* ${h12Start}:00 ${ampmStart} – ${h12End}:00 ${ampmEnd} (${hours} ${hours === 1 ? "hr" : "hrs"})`,
-      ...(estimatedCost !== null ? [`*Estimated cost:* KES ${estimatedCost.toLocaleString()}`] : []),
-      ...(notes.trim() ? [`*Notes:* ${notes.trim()}`] : []),
-    ];
-
-    const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "";
-    const waURL    = `https://wa.me/${waNumber}?text=${encodeURIComponent(lines.join("\n"))}`;
-    window.open(waURL, "_blank", "noopener,noreferrer");
 
     setSubmitting(false);
     setDone(true);
@@ -175,9 +187,9 @@ function BookingModal({
             <div style={{ fontSize: "2.2rem", color: "var(--green)", marginBottom: "12px" }}>
               <i className="fas fa-check-circle" />
             </div>
-            <h3 style={{ marginBottom: "8px" }}>Request Sent!</h3>
+            <h3 style={{ marginBottom: "8px" }}>Request Submitted!</h3>
             <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: "20px" }}>
-              WhatsApp has opened with your booking details. Our team will confirm once payment is received.
+              Our team will review your booking and send you a WhatsApp confirmation once payment is arranged.
             </p>
             <button className="btn-primary" onClick={onClose}>
               Close
@@ -198,51 +210,37 @@ function BookingModal({
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-
-              {/* Name + Phone */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <div>
-                  <label style={{ display: "block", fontSize: ".65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "5px" }}>
-                    Name <span style={{ color: "var(--red)" }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="Jane Kamau"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                  />
+            {/* Who's booking */}
+            <div style={{ marginBottom: "14px" }}>
+              <div style={{ fontSize: ".6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "5px" }}>
+                Booking as
+              </div>
+              <div style={{
+                background: "rgba(193,68,14,.06)", border: "1px solid rgba(193,68,14,.18)",
+                borderRadius: "8px", padding: "9px 12px",
+                display: "flex", alignItems: "center", gap: "10px",
+              }}>
+                <div style={{
+                  width: 30, height: 30, borderRadius: "50%",
+                  background: "rgba(193,68,14,.15)", border: "1px solid rgba(193,68,14,.3)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "var(--teal2)", fontSize: ".75rem", flexShrink: 0,
+                }}>
+                  <i className="fas fa-user" />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: ".65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "5px" }}>
-                    Phone <span style={{ color: "var(--red)" }}>*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    className="form-input"
-                    placeholder="+254 7XX XXX XXX"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    required
-                  />
+                  <div style={{ fontWeight: 700, fontSize: ".85rem", color: "var(--white)" }}>
+                    {user.full_name}
+                  </div>
+                  <div style={{ fontSize: ".68rem", color: "var(--muted)" }}>{user.email}</div>
+                  {user.phone && (
+                    <div style={{ fontSize: ".68rem", color: "var(--muted)" }}>{user.phone}</div>
+                  )}
                 </div>
               </div>
+            </div>
 
-              {/* Email */}
-              <div>
-                <label style={{ display: "block", fontSize: ".65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "5px" }}>
-                  Email <span style={{ opacity: .5, fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
-                </label>
-                <input
-                  type="email"
-                  className="form-input"
-                  placeholder="jane@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 
               {/* Date + Start Time */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
@@ -254,6 +252,7 @@ function BookingModal({
                     type="date"
                     className="form-input"
                     min={todayISO()}
+                    max={maxISO()}
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
                     required
@@ -277,39 +276,72 @@ function BookingModal({
                 </div>
               </div>
 
-              {/* Duration */}
+              {/* Duration + Attendees */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: ".65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "5px" }}>
+                    Duration <span style={{ color: "var(--red)" }}>*</span>
+                  </label>
+                  <select
+                    className="form-input"
+                    value={hours}
+                    onChange={(e) => setHours(Number(e.target.value))}
+                  >
+                    {HOUR_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                  {endTooLate && (
+                    <p style={{ color: "var(--red)", fontSize: ".65rem", marginTop: "3px" }}>
+                      Ends after 10 PM — reduce duration.
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: ".65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "5px" }}>
+                    Attendees <span style={{ color: "var(--red)" }}>*</span>
+                  </label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    min={1}
+                    max={50}
+                    value={attendees}
+                    onChange={(e) => setAttendees(Math.max(1, Math.min(50, Number(e.target.value))))}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Purpose */}
               <div>
                 <label style={{ display: "block", fontSize: ".65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "5px" }}>
-                  Duration <span style={{ color: "var(--red)" }}>*</span>
+                  Purpose <span style={{ color: "var(--red)" }}>*</span>
                 </label>
                 <select
                   className="form-input"
-                  value={hours}
-                  onChange={(e) => setHours(Number(e.target.value))}
+                  value={purpose}
+                  onChange={(e) => setPurpose(e.target.value)}
+                  required
                 >
-                  {HOUR_OPTIONS.map((o) => (
+                  {PURPOSE_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
-                {endTooLate && (
-                  <p style={{ color: "var(--red)", fontSize: ".68rem", marginTop: "4px" }}>
-                    Session would end after 10 PM. Reduce duration or pick an earlier time.
-                  </p>
-                )}
               </div>
 
-              {/* Notes */}
+              {/* Additional notes */}
               <div>
                 <label style={{ display: "block", fontSize: ".65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "5px" }}>
-                  Notes <span style={{ opacity: .5, fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
+                  Additional notes <span style={{ opacity: .5, fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
                 </label>
                 <textarea
                   className="form-input"
-                  placeholder="E.g. podcast recording for 2 people, need mic setup…"
+                  placeholder="E.g. need mic setup, projector, specific seating arrangement…"
                   rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  style={{ resize: "vertical" }}
+                  style={{ resize: "none" }}
                 />
               </div>
 
@@ -343,8 +375,8 @@ function BookingModal({
                 disabled={submitting || endTooLate}
                 style={{ marginTop: "4px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
               >
-                <i className="fab fa-whatsapp" style={{ fontSize: "1.1rem" }} />
-                {submitting ? "Opening WhatsApp…" : "Book via WhatsApp"}
+                <i className="fas fa-calendar-check" style={{ fontSize: "1rem" }} />
+                {submitting ? "Submitting…" : "Request Booking"}
               </button>
             </form>
           </>
@@ -356,11 +388,19 @@ function BookingModal({
 
 // ─── Main Schedule Component ──────────────────────────────────────────────────
 
-export default function SpaceScheduleClient({ space }: { space: Space }) {
+export default function SpaceScheduleClient({
+  space,
+  user,
+}: {
+  space: Space;
+  user:  UserProfile | null;
+}) {
+  const router       = useRouter();
+  const pathname     = usePathname();
   const [selectedDate, setSelectedDate] = useState(todayISO());
-  const [bookings, setBookings] = useState<BookingSlot[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState<ModalState | null>(null);
+  const [bookings,     setBookings]     = useState<BookingSlot[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [modal,        setModal]        = useState<ModalState | null>(null);
 
   const fetchSchedule = useCallback(async (date: string) => {
     setLoading(true);
@@ -379,6 +419,10 @@ export default function SpaceScheduleClient({ space }: { space: Space }) {
   }, [selectedDate, fetchSchedule]);
 
   const openModal = (h: number) => {
+    if (!user) {
+      router.push(`/signup?return=${encodeURIComponent(pathname)}`);
+      return;
+    }
     setModal({ date: selectedDate, start_time: fmt24Value(h) });
   };
 
@@ -386,8 +430,8 @@ export default function SpaceScheduleClient({ space }: { space: Space }) {
   const shiftDate = (days: number) => {
     const d = new Date(selectedDate + "T12:00:00");
     d.setDate(d.getDate() + days);
-    const iso = d.toISOString().split("T")[0];
-    if (iso >= todayISO()) setSelectedDate(iso);
+    const iso = d.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
+    if (iso >= todayISO() && iso <= maxISO()) setSelectedDate(iso);
   };
 
   return (
@@ -403,7 +447,7 @@ export default function SpaceScheduleClient({ space }: { space: Space }) {
         {/* Date navigator */}
         <div style={{
           display: "flex", alignItems: "center", gap: "12px",
-          background: "var(--dark2)", border: "1px solid var(--border)",
+          background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)",
           borderRadius: "10px", padding: "10px 14px", marginBottom: "16px",
         }}>
           <button
@@ -411,7 +455,7 @@ export default function SpaceScheduleClient({ space }: { space: Space }) {
             disabled={selectedDate <= todayISO()}
             style={{
               background: "none", border: "none",
-              color: selectedDate <= todayISO() ? "var(--muted)" : "var(--white)",
+              color: selectedDate <= todayISO() ? "rgba(255,255,255,.25)" : "rgba(255,255,255,.85)",
               cursor: selectedDate <= todayISO() ? "not-allowed" : "pointer",
               fontSize: ".9rem", padding: "4px 8px",
             }}
@@ -424,23 +468,30 @@ export default function SpaceScheduleClient({ space }: { space: Space }) {
               type="date"
               value={selectedDate}
               min={todayISO()}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              max={maxISO()}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v >= todayISO() && v <= maxISO()) setSelectedDate(v);
+              }}
               style={{
-                background: "none", border: "none", color: "var(--white)",
+                background: "none", border: "none", color: "#ffffff",
                 fontSize: ".88rem", fontWeight: 700, cursor: "pointer",
-                textAlign: "center",
+                textAlign: "center", colorScheme: "dark",
               }}
             />
-            <div style={{ fontSize: ".7rem", color: "var(--muted)", marginTop: "1px" }}>
+            <div style={{ fontSize: ".72rem", color: "rgba(255,255,255,.6)", marginTop: "2px", fontWeight: 500 }}>
               {formatDateDisplay(selectedDate)}
             </div>
           </div>
 
           <button
             onClick={() => shiftDate(1)}
+            disabled={selectedDate >= maxISO()}
             style={{
-              background: "none", border: "none", color: "var(--white)",
-              cursor: "pointer", fontSize: ".9rem", padding: "4px 8px",
+              background: "none", border: "none",
+              color: selectedDate >= maxISO() ? "rgba(255,255,255,.25)" : "rgba(255,255,255,.85)",
+              cursor: selectedDate >= maxISO() ? "not-allowed" : "pointer",
+              fontSize: ".9rem", padding: "4px 8px",
             }}
           >
             <i className="fas fa-chevron-right" />
@@ -448,62 +499,71 @@ export default function SpaceScheduleClient({ space }: { space: Space }) {
         </div>
 
         {/* Legend */}
-        <div style={{ display: "flex", gap: "16px", marginBottom: "12px", flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: ".72rem", color: "var(--muted)" }}>
-            <span style={{ width: "12px", height: "12px", borderRadius: "3px", background: "rgba(239,68,68,.15)", border: "1px solid rgba(239,68,68,.4)", display: "inline-block" }} />
+        <div style={{ display: "flex", gap: "14px", marginBottom: "8px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: ".7rem", color: "rgba(255,255,255,.55)" }}>
+            <span style={{ width: "11px", height: "11px", borderRadius: "3px", background: "rgba(239,68,68,.25)", border: "1px solid rgba(239,68,68,.5)", display: "inline-block" }} />
             Booked
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: ".72rem", color: "var(--muted)" }}>
-            <span style={{ width: "12px", height: "12px", borderRadius: "3px", background: "rgba(34,197,94,.1)", border: "1px solid rgba(34,197,94,.3)", display: "inline-block" }} />
-            Available — click to book
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: ".7rem", color: "rgba(255,255,255,.55)" }}>
+            <span style={{ width: "11px", height: "11px", borderRadius: "3px", background: "rgba(251,191,36,.2)", border: "1px solid rgba(251,191,36,.45)", display: "inline-block" }} />
+            Reserved
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: ".7rem", color: "rgba(255,255,255,.55)" }}>
+            <span style={{ width: "11px", height: "11px", borderRadius: "3px", background: "rgba(34,197,94,.18)", border: "1px solid rgba(34,197,94,.45)", display: "inline-block" }} />
+            Free — click to book
           </div>
         </div>
+        <p style={{ fontSize: ".68rem", color: "rgba(255,255,255,.4)", marginBottom: "12px" }}>
+          <i className="fas fa-calendar-range" style={{ marginRight: "5px" }} />
+          Bookings open for the next 30 days · up to {new Date(maxISO() + "T12:00:00").toLocaleDateString("en-KE", { day: "numeric", month: "long" })}
+        </p>
 
-        {/* Time grid */}
+        {/* Time grid — 4 columns always, compact pills */}
         {loading ? (
-          <div style={{ padding: "24px 0", textAlign: "center", color: "var(--muted)", fontSize: ".82rem" }}>
+          <div style={{ padding: "20px 0", textAlign: "center", color: "rgba(255,255,255,.4)", fontSize: ".82rem" }}>
             <span className="spinner" style={{ marginRight: "8px" }} />
             Loading schedule…
           </div>
         ) : (
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))",
-            gap: "8px",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: "6px",
           }}>
             {GRID_HOURS.map((h) => {
-              const occupied = isOccupied(h, bookings);
-              return occupied ? (
-                <div
-                  key={h}
-                  style={{
-                    padding: "10px 8px",
-                    borderRadius: "8px",
-                    textAlign: "center",
-                    background: "rgba(239,68,68,.1)",
-                    border: "1px solid rgba(239,68,68,.35)",
-                    cursor: "not-allowed",
-                  }}
-                >
-                  <div style={{ fontSize: ".78rem", fontWeight: 700, color: "#fca5a5" }}>
-                    {fmt24(h)}
-                  </div>
-                  <div style={{ fontSize: ".62rem", color: "rgba(252,165,165,.7)", marginTop: "3px" }}>
-                    Booked
-                  </div>
+              const state = slotState(h, bookings);
+
+              if (state === "booked") return (
+                <div key={h} title="Confirmed booking" style={{
+                  padding: "8px 4px", borderRadius: "7px", textAlign: "center",
+                  background: "rgba(239,68,68,.1)", border: "1px solid rgba(239,68,68,.3)",
+                  cursor: "not-allowed",
+                }}>
+                  <div style={{ fontSize: ".72rem", fontWeight: 700, color: "#fca5a5", lineHeight: 1.2 }}>{fmt24(h)}</div>
+                  <div style={{ fontSize: ".55rem", color: "rgba(252,165,165,.6)", marginTop: "2px" }}>Booked</div>
                 </div>
-              ) : (
+              );
+
+              if (state === "pending") return (
+                <div key={h} title="Pending reservation" style={{
+                  padding: "8px 4px", borderRadius: "7px", textAlign: "center",
+                  background: "rgba(251,191,36,.08)", border: "1px solid rgba(251,191,36,.35)",
+                  cursor: "not-allowed",
+                }}>
+                  <div style={{ fontSize: ".72rem", fontWeight: 700, color: "#fde68a", lineHeight: 1.2 }}>{fmt24(h)}</div>
+                  <div style={{ fontSize: ".55rem", color: "rgba(253,230,138,.6)", marginTop: "2px" }}>Reserved</div>
+                </div>
+              );
+
+              return (
                 <button
                   key={h}
                   onClick={() => openModal(h)}
+                  title="Click to book"
                   style={{
-                    padding: "10px 8px",
-                    borderRadius: "8px",
-                    textAlign: "center",
-                    background: "rgba(34,197,94,.07)",
-                    border: "1px solid rgba(34,197,94,.28)",
-                    cursor: "pointer",
-                    transition: "background .15s, border-color .15s",
+                    padding: "8px 4px", borderRadius: "7px", textAlign: "center",
+                    background: "rgba(34,197,94,.07)", border: "1px solid rgba(34,197,94,.25)",
+                    cursor: "pointer", transition: "background .15s, border-color .15s",
                   }}
                   onMouseEnter={(e) => {
                     (e.currentTarget as HTMLButtonElement).style.background = "rgba(34,197,94,.18)";
@@ -511,15 +571,11 @@ export default function SpaceScheduleClient({ space }: { space: Space }) {
                   }}
                   onMouseLeave={(e) => {
                     (e.currentTarget as HTMLButtonElement).style.background = "rgba(34,197,94,.07)";
-                    (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(34,197,94,.28)";
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(34,197,94,.25)";
                   }}
                 >
-                  <div style={{ fontSize: ".78rem", fontWeight: 700, color: "#86efac" }}>
-                    {fmt24(h)}
-                  </div>
-                  <div style={{ fontSize: ".62rem", color: "rgba(134,239,172,.7)", marginTop: "3px" }}>
-                    Available
-                  </div>
+                  <div style={{ fontSize: ".72rem", fontWeight: 700, color: "#86efac", lineHeight: 1.2 }}>{fmt24(h)}</div>
+                  <div style={{ fontSize: ".55rem", color: "rgba(134,239,172,.6)", marginTop: "2px" }}>Free</div>
                 </button>
               );
             })}
@@ -528,13 +584,13 @@ export default function SpaceScheduleClient({ space }: { space: Space }) {
 
       </div>
 
-      {modal && (
+      {modal && user && (
         <BookingModal
           space={space}
           initial={modal}
+          user={user}
           onClose={() => {
             setModal(null);
-            // Refresh schedule so newly-pending slots don't confuse (confirmed ones matter)
             fetchSchedule(selectedDate);
           }}
         />

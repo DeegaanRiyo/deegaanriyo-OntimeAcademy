@@ -56,7 +56,6 @@ export default async function ReceiptPage({ params }: { params: { id: string } }
 
   if (!payment) redirect("/dashboard/receptionist/members");
 
-  // If membership, get subscription_end
   let subEnd: string | null = null;
   if (payment.profile_id) {
     const { data: mem } = await admin
@@ -74,150 +73,273 @@ export default async function ReceiptPage({ params }: { params: { id: string } }
 
   return (
     <>
-      {/* Print styles — hides dashboard chrome */}
+      {/* ── Print + page styles ─────────────────────────────────── */}
       <style>{`
         @media print {
           #sidebar, .topbar, .no-print { display: none !important; }
           .dash-main { margin: 0 !important; padding: 0 !important; }
           .dash-content { padding: 0 !important; }
-          body { background: #fff !important; color: #000 !important; }
+          body { background: #fff !important; }
+          .receipt-shell { padding: 0 !important; }
+          .receipt-card {
+            border: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            max-width: 100% !important;
+          }
+        }
+
+        .receipt-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 9px 0;
+          border-bottom: 1px solid #e5e7eb;
+          font-size: .83rem;
+        }
+        .receipt-row:last-child { border-bottom: none; }
+        .receipt-row .rl { color: #6b7280; }
+        .receipt-row .rv { color: #111; font-weight: 500; text-align: right; }
+        .receipt-row .rv.bold { font-weight: 800; font-size: .95rem; }
+        .receipt-row .rv.accent { color: #C1440E; font-weight: 700; }
+
+        .sec-label {
+          font-size: .6rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: .12em;
+          color: #9ca3af;
+          margin-bottom: 6px;
+        }
+
+        .receipt-divider {
+          border: none;
+          border-top: 1px dashed #d1d5db;
+          margin: 18px 0;
         }
       `}</style>
 
-      <div style={{ maxWidth: "520px", margin: "0 auto" }}>
-        {/* Back + Print */}
-        <div className="no-print" style={{ display: "flex", justifyContent: "space-between",
-          alignItems: "center", marginBottom: "20px" }}>
-          <a href="/dashboard/receptionist/members"
-            style={{ color: "var(--teal2)", fontSize: ".82rem", textDecoration: "none" }}>
-            <i className="fas fa-arrow-left" style={{ marginRight: "6px" }} />Back to Members
+      <div className="receipt-shell" style={{ maxWidth: "560px", margin: "0 auto", padding: "8px 0 40px" }}>
+
+        {/* ── Toolbar (no-print) ────────────────────────────────── */}
+        <div className="no-print" style={{
+          display: "flex", justifyContent: "space-between",
+          alignItems: "center", marginBottom: "20px",
+        }}>
+          <a href="/dashboard/receptionist/members" style={{
+            color: "var(--teal2)", fontSize: ".82rem", textDecoration: "none",
+            display: "flex", alignItems: "center", gap: "6px",
+          }}>
+            <i className="fas fa-arrow-left" /> Back to Members
           </a>
           <PrintButton />
         </div>
 
-        {/* Receipt card */}
-        <div style={{
-          background: "var(--dark2)", border: "1px solid var(--border)",
-          borderRadius: "12px", overflow: "hidden",
+        {/* ── Receipt card ──────────────────────────────────────── */}
+        <div className="receipt-card" style={{
+          background: "#fff",
+          borderRadius: "14px",
+          border: "1px solid #e5e7eb",
+          boxShadow: "0 4px 32px rgba(0,0,0,.08)",
+          overflow: "hidden",
+          color: "#111",
         }}>
-          {/* Header */}
-          <div style={{
-            background: "linear-gradient(135deg, var(--teal), var(--teal2))",
-            padding: "24px 28px",
-          }}>
-            <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#fff", marginBottom: "2px" }}>
-              Ontime<span style={{ fontWeight: 300 }}>CWS</span>
-            </div>
-            <div style={{ fontSize: ".72rem", color: "rgba(255,255,255,.75)" }}>
-              Academy & Co-working Space · Nairobi
-            </div>
-            <div style={{ marginTop: "16px", display: "flex", justifyContent: "space-between",
-              alignItems: "flex-end" }}>
-              <div>
-                <div style={{ fontSize: ".65rem", color: "rgba(255,255,255,.6)",
-                  textTransform: "uppercase", letterSpacing: ".08em" }}>Receipt</div>
-                <div style={{ fontSize: "1rem", fontWeight: 700, color: "#fff" }}>{receiptNo}</div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: ".65rem", color: "rgba(255,255,255,.6)",
-                  textTransform: "uppercase", letterSpacing: ".08em" }}>Date</div>
-                <div style={{ fontSize: ".8rem", color: "#fff" }}>{fmt(payment.created_at)}</div>
-              </div>
-            </div>
-          </div>
 
-          {/* Body */}
-          <div style={{ padding: "24px 28px" }}>
+          {/* ── HEADER ─────────────────────────────────────────── */}
+          <div style={{
+            padding: "28px 32px 24px",
+            borderBottom: "2px solid #111",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+
+              {/* Brand block */}
+              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/logo.jpeg"
+                  alt="Ontime Academy"
+                  width={56}
+                  height={56}
+                  style={{ objectFit: "contain", borderRadius: "10px" }}
+                />
+                <div>
+                  <div style={{
+                    fontSize: "1.15rem", fontWeight: 900, color: "#111",
+                    letterSpacing: "-.02em", lineHeight: 1.1,
+                  }}>
+                    Ontime<span style={{ color: "#C1440E" }}>Academy</span>
+                  </div>
+                  <div style={{ fontSize: ".68rem", color: "#6b7280", marginTop: "3px", lineHeight: 1.5 }}>
+                    Academy & Co-working Space<br />
+                    Nairobi, Kenya
+                  </div>
+                </div>
+              </div>
+
+              {/* Receipt meta */}
+              <div style={{ textAlign: "right" }}>
+                <div style={{
+                  fontSize: ".6rem", fontWeight: 700, textTransform: "uppercase",
+                  letterSpacing: ".12em", color: "#9ca3af", marginBottom: "4px",
+                }}>
+                  Official Receipt
+                </div>
+                <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#111", letterSpacing: ".02em" }}>
+                  {receiptNo}
+                </div>
+                <div style={{ fontSize: ".72rem", color: "#6b7280", marginTop: "4px" }}>
+                  {fmt(payment.created_at)}
+                </div>
+              </div>
+
+            </div>
+
             {/* Type badge */}
-            <div style={{ marginBottom: "20px" }}>
+            <div style={{ marginTop: "20px" }}>
               <span style={{
-                background: "rgba(15,179,187,.12)", border: "1px solid rgba(15,179,187,.3)",
-                color: "var(--teal2)", borderRadius: "6px", padding: "4px 12px",
-                fontSize: ".72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em",
+                background: "#111", color: "#fff",
+                borderRadius: "4px", padding: "3px 12px",
+                fontSize: ".65rem", fontWeight: 700,
+                textTransform: "uppercase", letterSpacing: ".1em",
               }}>
                 {TYPE_LABELS[payment.type] ?? payment.type}
               </span>
             </div>
+          </div>
 
-            {/* Customer */}
-            <Section label="Received From">
-              <Row label="Name"  value={payment.customer_name} />
-              <Row label="Phone" value={payment.customer_phone} />
-              {payment.customer_email && <Row label="Email" value={payment.customer_email} />}
-            </Section>
+          {/* ── BODY ────────────────────────────────────────────── */}
+          <div style={{ padding: "24px 32px" }}>
 
-            <Divider />
-
-            {/* Payment */}
-            <Section label="Payment Details">
-              <Row label="Amount"  value={`KES ${payment.amount.toLocaleString()}`} bold />
-              <Row label="Method"  value={METHOD_LABELS[payment.method] ?? payment.method} />
-              {payment.reference && <Row label="Reference" value={payment.reference} />}
-              {payment.type === "membership" && subEnd && (
-                <Row label="Valid Until" value={fmtDate(subEnd)} highlight />
+            {/* Received from */}
+            <div style={{ marginBottom: "20px" }}>
+              <div className="sec-label">Received From</div>
+              <div className="receipt-row">
+                <span className="rl">Full Name</span>
+                <span className="rv">{payment.customer_name}</span>
+              </div>
+              <div className="receipt-row">
+                <span className="rl">Phone</span>
+                <span className="rv">{payment.customer_phone}</span>
+              </div>
+              {payment.customer_email && (
+                <div className="receipt-row">
+                  <span className="rl">Email</span>
+                  <span className="rv">{payment.customer_email}</span>
+                </div>
               )}
-            </Section>
+            </div>
 
+            <hr className="receipt-divider" />
+
+            {/* Payment details */}
+            <div style={{ marginBottom: "20px" }}>
+              <div className="sec-label">Payment Details</div>
+              <div className="receipt-row">
+                <span className="rl">Service</span>
+                <span className="rv">{TYPE_LABELS[payment.type] ?? payment.type}</span>
+              </div>
+              <div className="receipt-row">
+                <span className="rl">Payment Method</span>
+                <span className="rv">{METHOD_LABELS[payment.method] ?? payment.method}</span>
+              </div>
+              {payment.reference && (
+                <div className="receipt-row">
+                  <span className="rl">Reference / Receipt No.</span>
+                  <span className="rv">{payment.reference}</span>
+                </div>
+              )}
+              {payment.type === "membership" && subEnd && (
+                <div className="receipt-row">
+                  <span className="rl">Membership Valid Until</span>
+                  <span className="rv accent">{fmtDate(subEnd)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Amount — prominent */}
+            <div style={{
+              background: "#f9fafb",
+              border: "1px solid #e5e7eb",
+              borderRadius: "10px",
+              padding: "16px 20px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "20px",
+            }}>
+              <div>
+                <div style={{ fontSize: ".6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "#9ca3af", marginBottom: "2px" }}>
+                  Amount Paid
+                </div>
+                <div style={{ fontSize: "1.6rem", fontWeight: 900, color: "#111", letterSpacing: "-.02em" }}>
+                  KES {payment.amount.toLocaleString()}
+                </div>
+              </div>
+              <div style={{
+                width: 44, height: 44, borderRadius: "50%",
+                background: "rgba(22,163,74,.1)", border: "1.5px solid rgba(22,163,74,.3)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "#16a34a", fontSize: "1.1rem",
+              }}>
+                <i className="fas fa-check" />
+              </div>
+            </div>
+
+            {/* Notes */}
             {payment.notes && (
               <>
-                <Divider />
-                <Section label="Notes">
-                  <p style={{ margin: 0, fontSize: ".8rem", color: "var(--muted)",
-                    lineHeight: 1.6 }}>{payment.notes}</p>
-                </Section>
+                <hr className="receipt-divider" />
+                <div style={{ marginBottom: "20px" }}>
+                  <div className="sec-label">Notes</div>
+                  <p style={{
+                    margin: 0, fontSize: ".8rem", color: "#6b7280",
+                    lineHeight: 1.65, background: "#f9fafb",
+                    border: "1px solid #e5e7eb", borderRadius: "8px",
+                    padding: "10px 14px",
+                  }}>
+                    {payment.notes}
+                  </p>
+                </div>
               </>
             )}
 
-            <Divider />
+            <hr className="receipt-divider" />
 
-            {/* Footer */}
-            <div style={{ display: "flex", justifyContent: "space-between",
-              fontSize: ".7rem", color: "var(--muted)" }}>
-              <span>Recorded by: {recorder}</span>
+            {/* Thank you + footer meta */}
+            <div style={{
+              background: "#f9fafb",
+              border: "1px solid #e5e7eb",
+              borderRadius: "10px",
+              padding: "14px 18px",
+              textAlign: "center",
+              marginBottom: "18px",
+            }}>
+              <div style={{ fontSize: ".82rem", fontWeight: 700, color: "#111", marginBottom: "3px" }}>
+                Thank you for choosing Ontime Academy!
+              </div>
+              <div style={{ fontSize: ".72rem", color: "#9ca3af" }}>
+                This is an official payment receipt. Please retain for your records.
+              </div>
+            </div>
+
+            {/* Footer row */}
+            <div style={{
+              display: "flex", justifyContent: "space-between",
+              fontSize: ".68rem", color: "#9ca3af",
+            }}>
+              <span>Recorded by: <strong style={{ color: "#6b7280" }}>{recorder}</strong></span>
               <span>{receiptNo}</span>
             </div>
 
-            <div style={{ marginTop: "16px", padding: "12px", borderRadius: "8px",
-              background: "rgba(15,179,187,.05)", border: "1px solid rgba(15,179,187,.12)",
-              fontSize: ".72rem", color: "var(--muted)", textAlign: "center" }}>
-              Thank you for choosing Ontime Academy & Co-working Space.
-            </div>
           </div>
+
+          {/* ── BOTTOM ACCENT STRIP ─────────────────────────────── */}
+          <div style={{
+            height: "5px",
+            background: "linear-gradient(90deg, #C1440E, #E05520, #C1440E)",
+          }} />
         </div>
       </div>
     </>
   );
-}
-
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: "16px" }}>
-      <div style={{ fontSize: ".65rem", fontWeight: 700, color: "var(--muted)",
-        textTransform: "uppercase", letterSpacing: ".08em", marginBottom: "8px" }}>
-        {label}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function Row({ label, value, bold, highlight }: {
-  label: string; value: string; bold?: boolean; highlight?: boolean;
-}) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between",
-      padding: "6px 0", borderBottom: "1px solid var(--border)", fontSize: ".82rem" }}>
-      <span style={{ color: "var(--muted)" }}>{label}</span>
-      <span style={{
-        fontWeight: bold ? 700 : 500,
-        color: highlight ? "var(--teal2)" : "var(--white)",
-      }}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function Divider() {
-  return <div style={{ borderTop: "1px solid var(--border)", margin: "16px 0" }} />;
 }

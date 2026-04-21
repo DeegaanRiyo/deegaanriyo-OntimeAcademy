@@ -90,8 +90,8 @@ export default async function CoursesPage() {
             Learn from <em>Nairobi&apos;s best.</em>
           </h1>
           <p className="sec-p max-w-[520px]">
-            Practical, career-relevant courses taught by professionals who&apos;ve done it
-            in the real Nairobi market. Self-paced. Pay once. Learn forever.
+            Practical, career-relevant courses from professionals who live and work in the real
+            Nairobi market. Self-paced. Pay once. Learn forever. Launching soon.
           </p>
         </div>
       </section>
@@ -101,12 +101,61 @@ export default async function CoursesPage() {
         <div className="max-w-[1280px] mx-auto">
 
           {courses.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="text-5xl mb-4">📚</div>
-              <h2 className="font-[var(--font-fraunces)] text-[1.5rem] mb-2.5 text-[var(--dark)]">
-                Courses coming soon
+            <div className="py-16 flex flex-col items-center">
+
+              {/* Icon */}
+              <div className="w-20 h-20 rounded-full bg-[rgba(193,68,14,.08)] border border-[rgba(193,68,14,.18)] flex items-center justify-center mb-7 text-[2rem] text-[var(--teal2)]">
+                <i className="fas fa-graduation-cap" />
+              </div>
+
+              {/* Headline */}
+              <div className="text-[.65rem] font-bold tracking-[.2em] uppercase text-[var(--teal2)] mb-3">
+                Coming Soon
+              </div>
+              <h2 className="font-[var(--font-fraunces)] text-[clamp(1.6rem,3vw,2.2rem)] font-extrabold text-[var(--dark)] text-center leading-[1.2] mb-4 max-w-[500px]">
+                We&apos;re building something great
               </h2>
-              <p className="sec-p">Our instructors are busy building amazing content. Check back soon!</p>
+              <p className="text-[var(--muted)] text-[.95rem] leading-[1.75] text-center max-w-[460px] mb-8">
+                Our instructors are developing practical, career-relevant courses for the Nairobi market.
+                First courses launch soon — follow us on WhatsApp to be the first to know.
+              </p>
+
+              {/* Notify CTA */}
+              <a
+                href={`https://wa.me/254746628668?text=${encodeURIComponent("Hi, I'd like to be notified when Ontime Academy courses launch.")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-bold text-[.9rem] no-underline mb-10"
+                style={{ background: "#25D366" }}
+              >
+                <i className="fab fa-whatsapp text-[1.1rem]" />
+                Notify me on WhatsApp
+              </a>
+
+              {/* Upcoming categories */}
+              <p className="text-[.62rem] font-bold uppercase tracking-[.14em] text-[var(--muted)] mb-4">
+                Topics we&apos;re working on
+              </p>
+              <div className="flex flex-wrap justify-center gap-2 max-w-[520px]">
+                {[
+                  "Digital Marketing",
+                  "Business Finance",
+                  "Graphic Design",
+                  "Content Creation",
+                  "Public Speaking",
+                  "Entrepreneurship",
+                  "Social Media",
+                  "Photography",
+                ].map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-3 py-1 rounded-full border border-[var(--border)] text-[var(--muted)] text-[.72rem] font-medium"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
             </div>
           ) : (
             <>

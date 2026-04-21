@@ -12,6 +12,13 @@ function serviceClient() {
 
 const DEFAULT_MEMBERSHIP_FEE = 7500; // KES — fallback for records without membership_fee stored
 
+/** Extracts "Python Bootcamp" from notes stored as "Class: Python Bootcamp" or "Class: Python Bootcamp. extra notes" */
+function extractClassName(notes: string | null): string {
+  if (!notes) return "";
+  const match = notes.match(/^Class:\s*([^.]+)/);
+  return match ? match[1].trim() : "";
+}
+
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -126,6 +133,7 @@ export async function GET() {
         method:         p.method,
         reference:      p.reference,
         notes:          p.notes,
+        class_name:     p.type === "physical_class" ? extractClassName(p.notes) : null,
         payment_date:   p.created_at,
         sub_start,
         due_date,

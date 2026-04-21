@@ -10,7 +10,8 @@ function createServiceClient() {
 }
 
 // GET /api/spaces/[id]/schedule?date=YYYY-MM-DD
-// Public — returns confirmed/active bookings so the public time grid can mark slots as taken.
+// Public — returns pending/confirmed/active bookings so the public time grid can mark slots as taken.
+// pending = soft-reserved (amber), confirmed/active = hard-booked (red).
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -30,7 +31,7 @@ export async function GET(
       .select("id, start_time, hours, status, visitor_name")
       .eq("space_id", id)
       .eq("booking_date", date)
-      .in("status", ["confirmed", "active"]);
+      .in("status", ["pending", "confirmed", "active"]);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

@@ -65,16 +65,16 @@ export default async function ReceptionistDashboardPage() {
       .gte("created_at", todayStart)
       .lte("created_at", todayEnd),
 
-    // Member count (unique profile_id with type=membership)
+    // Member count — one row per member in the members table
     service
-      .from("walk_in_payments")
+      .from("members")
       .select("id")
-      .eq("type", "membership"),
+      .eq("is_active", true),
 
-    // Student count (unique by name — physical class registrations)
+    // Student count — distinct phones in physical_class payments
     service
       .from("walk_in_payments")
-      .select("id")
+      .select("customer_phone")
       .eq("type", "physical_class"),
   ]);
 
@@ -95,7 +95,7 @@ export default async function ReceptionistDashboardPage() {
       confirmedCount={(confirmedRaw ?? []).length}
       todayRevenue={todayRevenue}
       memberCount={(membersRaw ?? []).length}
-      studentCount={(studentsRaw ?? []).length}
+      studentCount={new Set((studentsRaw ?? []).map((s: any) => s.customer_phone)).size}
       allSpaces={spacesRaw ?? []}
       today={today}
       nowTime={nowTime}
