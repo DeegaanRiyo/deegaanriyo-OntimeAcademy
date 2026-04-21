@@ -18,8 +18,8 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const METHOD_LABELS: Record<string, string> = {
-  cash:          "Cash",
-  bank_transfer: "Bank Transfer",
+  cash:  "Cash",
+  mpesa: "M-Pesa",
 };
 
 function fmt(iso: string) {

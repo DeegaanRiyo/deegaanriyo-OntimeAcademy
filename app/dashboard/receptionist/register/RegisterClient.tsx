@@ -241,12 +241,12 @@ function RegisterMemberForm() {
         <Field label="Payment Method" required>
           <Select value={form.method} onChange={(v) => setForm((p) => ({ ...p, method: v }))}>
             <option value="cash">Cash</option>
-            <option value="bank_transfer">Bank Transfer</option>
+            <option value="mpesa">M-Pesa</option>
           </Select>
         </Field>
-        {form.method === "bank_transfer" && (
-          <Field label="Bank Reference">
-            <Input value={form.reference} onChange={set("reference")} placeholder="Transaction ref" />
+        {form.method === "mpesa" && (
+          <Field label="M-Pesa Code">
+            <Input value={form.reference} onChange={set("reference")} placeholder="e.g. QA12BCD3E4" />
           </Field>
         )}
       </div>
@@ -354,12 +354,12 @@ function RegisterStudentForm() {
         <Field label="Payment Method" required>
           <Select value={form.method} onChange={(v) => setForm((p) => ({ ...p, method: v }))}>
             <option value="cash">Cash</option>
-            <option value="bank_transfer">Bank Transfer</option>
+            <option value="mpesa">M-Pesa</option>
           </Select>
         </Field>
-        {form.method === "bank_transfer" && (
-          <Field label="Bank Reference">
-            <Input value={form.reference} onChange={set("reference")} placeholder="Transaction ref" />
+        {form.method === "mpesa" && (
+          <Field label="M-Pesa Code">
+            <Input value={form.reference} onChange={set("reference")} placeholder="e.g. QA12BCD3E4" />
           </Field>
         )}
       </div>
