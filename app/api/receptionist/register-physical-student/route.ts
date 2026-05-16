@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
       mpesa_amount?:       number;   // used when method = "both"
       mpesa_reference?:    string;   // M-Pesa transaction code
       notes?:              string;
+      joined_at?:          string;
     };
 
     const {
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
       amount, method,
       cash_amount, mpesa_amount, mpesa_reference,
       notes,
+      joined_at,
     } = body;
 
     if (!full_name || !phone || !class_name || !amount || !method) {
@@ -69,6 +71,10 @@ export async function POST(req: NextRequest) {
       `reg_fee=${registration_fee}`,
       `total_due=${total_due}`,
     ];
+
+    if (joined_at) {
+      metaParts.push(`joined_at=${joined_at}`);
+    }
 
     if (method === "both") {
       metaParts.push(`cash=${cash_amount ?? 0}`);

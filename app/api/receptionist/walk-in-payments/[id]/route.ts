@@ -48,6 +48,7 @@ export async function PATCH(
       mpesa_amount?:        number;
       mpesa_reference?:     string;
       notes?:               string;
+      joined_at?:           string;
     };
 
     // Fetch current record so we can preserve fields we're not changing
@@ -72,6 +73,7 @@ export async function PATCH(
     const cash_amount        = body.cash_amount          ?? 0;
     const mpesa_amount       = body.mpesa_amount         ?? 0;
     const userNotes          = body.notes                ?? "";
+    const joined_at         = body.joined_at             ?? "";
 
     // Rebuild structured notes string
     const metaParts: string[] = [
@@ -80,6 +82,7 @@ export async function PATCH(
       `monthly=${course_fee_monthly}`,
       `reg_fee=${registration_fee}`,
       `total_due=${total_due}`,
+      `joined_at=${joined_at}`,
     ];
 
     if (method === "both") {

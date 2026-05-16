@@ -154,6 +154,7 @@ export async function GET() {
         cash_amount:         isPhysical ? extractMetaNumber(p.notes, "cash") : null,
         mpesa_amount:        isPhysical ? extractMetaNumber(p.notes, "mpesa") : null,
         mpesa_reference:     isPhysical ? extractMeta(p.notes, "mpesa_ref") : null,
+        joined_at:           isPhysical ? (extractMeta(p.notes, "joined_at") ?? p.created_at) : null,
         payment_date:        p.created_at,
         sub_start,
         due_date,

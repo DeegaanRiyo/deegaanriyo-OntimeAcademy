@@ -25,6 +25,7 @@ type Student = {
   mpesa_reference:     string | null;
   reference:           string | null;
   notes:               string | null;
+  joined_at:           string | null;
   payment_date:        string;
 };
 
@@ -40,7 +41,7 @@ function fmtDate(iso: string) {
 }
 function cleanNotes(notes: string | null) {
   if (!notes) return "";
-  const metaKeys = ["Class:", "student_type=", "monthly=", "reg_fee=", "total_due=", "cash=", "mpesa=", "mpesa_ref="];
+  const metaKeys = ["Class:", "student_type=", "monthly=", "reg_fee=", "total_due=", "cash=", "mpesa=", "mpesa_ref=", "joined_at="];
   return notes.split(". ").filter(p => !metaKeys.some(k => p.startsWith(k))).join(". ");
 }
 const METHOD_LABELS: Record<string, string> = {
@@ -80,6 +81,7 @@ function RegisterModal({ onClose, onRegistered }: {
   const [mpesaAmount,      setMpesaAmount]      = useState("");
   const [mpesaRef,         setMpesaRef]         = useState("");
   const [notes,            setNotes]            = useState("");
+  const [joinedAt,         setJoinedAt]         = useState(new Date().toISOString().split("T")[0]);
   const [loading,          setLoading]          = useState(false);
   const [error,            setError]            = useState<string | null>(null);
   const [success,          setSuccess]          = useState<{ name: string; class_name: string; payment_id: string } | null>(null);
@@ -109,6 +111,7 @@ function RegisterModal({ onClose, onRegistered }: {
           mpesa_amount:   method === "both" ? (Number(mpesaAmount) || 0) : undefined,
           mpesa_reference: (method === "mpesa" || method === "both") ? mpesaRef : undefined,
           notes: notes || undefined,
+          joined_at: joinedAt,
         }),
       });
       const json = await res.json();
@@ -176,6 +179,7 @@ function RegisterModal({ onClose, onRegistered }: {
               <div><label style={lbl}>Phone *</label><input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" required style={inp} /></div>
               <div><label style={lbl}>Email</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ahmed@email.com" style={inp} /></div>
               <div><label style={lbl}>Class / Course *</label><input value={className} onChange={(e) => setClassName(e.target.value)} placeholder="e.g. Python Bootcamp" required style={inp} /></div>
+              <div><label style={lbl}>Date Joined *</label><input type="date" value={joinedAt} onChange={(e) => setJoinedAt(e.target.value)} required style={inp} /></div>
             </div>
 
             <PhysicalStudentPaymentFields
@@ -229,6 +233,7 @@ function EditModal({ student, onClose, onSaved }: {
   const [mpesaAmount,   setMpesaAmount]  = useState(String(student.mpesa_amount  ?? ""));
   const [mpesaRef,      setMpesaRef]     = useState(student.mpesa_reference ?? student.reference ?? "");
   const [notes,         setNotes]        = useState(cleanNotes(student.notes));
+  const [joinedAt,      setJoinedAt]     = useState(student.joined_at ? student.joined_at.split("T")[0] : "");
   const [loading,       setLoading]      = useState(false);
   const [error,         setError]        = useState<string | null>(null);
 
@@ -258,6 +263,7 @@ function EditModal({ student, onClose, onSaved }: {
           mpesa_amount:   method === "both" ? (Number(mpesaAmount) || 0) : 0,
           mpesa_reference: (method === "mpesa" || method === "both") ? mpesaRef : "",
           notes,
+          joined_at: joinedAt,
         }),
       });
       const json = await res.json();
@@ -309,6 +315,7 @@ function EditModal({ student, onClose, onSaved }: {
             <div><label style={lbl}>Phone *</label><input value={phone} onChange={(e) => setPhone(e.target.value)} required style={inp} /></div>
             <div><label style={lbl}>Email</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={inp} /></div>
             <div><label style={lbl}>Class / Course *</label><input value={className} onChange={(e) => setClassName(e.target.value)} required style={inp} /></div>
+            <div><label style={lbl}>Date Joined *</label><input type="date" value={joinedAt} onChange={(e) => setJoinedAt(e.target.value)} required style={inp} /></div>
           </div>
 
           <PhysicalStudentPaymentFields
@@ -484,6 +491,7 @@ function StudentTable({ students, onEdit, onPay }: {
             <tr>
               <th>Student</th>
               <th>Phone</th>
+              <th>Joined</th>
               <th style={{ minWidth: "120px" }}>Course</th>
               <th>Monthly Fee</th>
               <th>Total Due</th>
@@ -499,7 +507,7 @@ function StudentTable({ students, onEdit, onPay }: {
               <React.Fragment key={cls}>
                 {/* Course Divider Row */}
                 <tr>
-                  <td colSpan={10} style={{ 
+                  <td colSpan={11} style={{ 
                     background: "rgba(17,17,17,.02)", 
                     padding: "8px 18px", 
                     fontSize: ".7rem", 
@@ -537,6 +545,9 @@ function StudentTable({ students, onEdit, onPay }: {
                         </div>
                       </td>
                       <td style={{ color: "var(--muted)", fontSize: ".78rem" }}>{s.phone}</td>
+                      <td style={{ color: "var(--muted)", fontSize: ".78rem" }}>
+                        {s.joined_at ? fmtDate(s.joined_at) : "—"}
+                      </td>
                       <td style={{ color: "var(--muted)", fontSize: ".78rem" }}>{s.class_name}</td>
                       <td style={{ color: "var(--muted)", fontSize: ".78rem" }}>
                         {s.course_fee_monthly ? s.course_fee_monthly.toLocaleString() : "—"}

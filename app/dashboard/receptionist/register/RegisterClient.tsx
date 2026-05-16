@@ -285,6 +285,7 @@ function RegisterStudentForm() {
   const [mpesaAmount,   setMpesaAmount]  = useState("");
   const [mpesaRef,      setMpesaRef]     = useState("");
   const [notes,         setNotes]        = useState("");
+  const [joinedAt,      setJoinedAt]     = useState(new Date().toISOString().split("T")[0]);
 
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
@@ -332,16 +333,18 @@ function RegisterStudentForm() {
           mpesa_amount:       method === "both" ? (Number(mpesaAmount) || 0) : undefined,
           mpesa_reference:    (method === "mpesa" || method === "both") ? mpesaRef : undefined,
           notes:              notes || undefined,
+          joined_at:          joinedAt,
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Failed");
       setSuccess({ payment_id: json.payment_id, name: fullName, class_name: className });
-      
+
       // Reset
       setFullName(""); setPhone(""); setEmail(""); setClassName("");
       setCourseMonthly(""); setRegFee("2000"); setAmountPaid("");
       setCashAmount(""); setMpesaAmount(""); setMpesaRef(""); setNotes("");
+      setJoinedAt(new Date().toISOString().split("T")[0]);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -427,6 +430,9 @@ function RegisterStudentForm() {
         </Field>
         <Field label="Class / Course" required>
           <Input value={className} onChange={(e) => setClassName(e.target.value)} placeholder="e.g. Python Bootcamp — Batch 3" required />
+        </Field>
+        <Field label="Date Joined" required>
+          <Input type="date" value={joinedAt} onChange={(e) => setJoinedAt(e.target.value)} required />
         </Field>
       </div>
 
