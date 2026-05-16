@@ -255,30 +255,31 @@ export default async function HomePage() {
             </div>
             <div className="spaces-grid">
               {spaces.slice(0, 3).map((space, i) => {
-                const configs = [
-                  {
-                    badge: "Meeting Room", badgeBg: "var(--teal)", priceColor: "var(--teal2)",
+                const configMap: Record<string, { badge: string; badgeBg: string; priceColor: string; borderColor: string; pillClass: string; img: string; pills: string[]; waText: string }> = {
+                  "boardroom": {
+                    badge: "Boardroom", badgeBg: "var(--teal)", priceColor: "var(--teal2)",
                     borderColor: "rgba(15,179,187,.2)", pillClass: "tl",
-                    img: "/ontimemedia/confrenceroom.jpeg",
+                    img: "/ontimemedia/boardroom.jpeg",
                     pills: ["Up to 8 people", "Smart TV", "Wi-Fi", "Whiteboard", "Air-Con"],
                     waText: `I'd like to book ${space.name}`,
                   },
-                  {
-                    badge: "Board Room", badgeBg: "var(--gold)", priceColor: "var(--gold2)",
-                    borderColor: "rgba(201,146,26,.25)", pillClass: "gd",
-                    img: "/ontimemedia/boardroom.jpeg",
-                    pills: ["Up to 14 people", "Dual Displays", "Video Conf.", "Executive Setup"],
-                    waText: `I'd like to book ${space.name}`,
-                  },
-                  {
-                    badge: "Content Studio", badgeBg: "#7c3aed", priceColor: "#a78bfa",
+                  "podcast-studio": {
+                    badge: "Podcast Studio", badgeBg: "#7c3aed", priceColor: "#a78bfa",
                     borderColor: "rgba(124,58,237,.25)", pillClass: "pu",
                     img: "/ontimemedia/podcast.png",
-                    pills: ["4K Cameras", "Ring Lights", "Podcast Mic", "Green Screen"],
+                    pills: ["Studio Mics", "Cameras", "Studio Lighting", "Sound Setup"],
                     waText: `I'd like to book ${space.name}`,
                   },
-                ];
-                const cfg = configs[i] ?? configs[0];
+                  "conference-room": {
+                    badge: "Conference Room", badgeBg: "var(--gold)", priceColor: "var(--gold2)",
+                    borderColor: "rgba(201,146,26,.25)", pillClass: "gd",
+                    img: "/ontimemedia/confrenceroom.jpeg",
+                    pills: ["Up to 50 people", "AV Setup", "Wi-Fi", "Air-Con"],
+                    waText: `I'd like to book ${space.name}`,
+                  },
+                };
+                const fallbacks = Object.values(configMap);
+                const cfg = configMap[space.slug] ?? fallbacks[i] ?? fallbacks[0];
                 return (
                   <div key={space.id} className={`sp-card rv d${i + 1}`}>
                     <div className="sp-img">
