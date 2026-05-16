@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import Sidebar, { type NavSection } from "@/app/dashboard/_components/Sidebar";
@@ -51,12 +50,6 @@ export default async function ReceptionistLayout({ children }: { children: React
   const name     = profile.full_name || profile.username || "Receptionist";
   const initials = name.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
 
-  const topbarRight = (
-    <Link href="/" className="tb-btn" title="Back to site" target="_blank">
-      <i className="fas fa-arrow-up-right-from-square" />
-    </Link>
-  );
-
   return (
     <DashboardLayout
       sidebar={
@@ -71,7 +64,6 @@ export default async function ReceptionistLayout({ children }: { children: React
       }
       topbarTitle="Reception Portal"
       topbarBreadcrumb="Receptionist"
-      topbarRight={topbarRight}
     >
       {children}
     </DashboardLayout>

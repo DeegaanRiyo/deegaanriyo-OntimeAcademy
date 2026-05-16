@@ -25,17 +25,32 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json() as {
-      full_name:   string;
-      phone:       string;
-      email?:      string;
-      class_name:  string;   // description of the physical class/course
-      amount:      number;
-      method:      "cash" | "bank_transfer";
-      reference?:  string;
-      notes?:      string;
+      full_name:           string;
+      phone:               string;
+      email?:              string;
+      class_name:          string;
+      student_type?:       "new" | "returning";
+      course_fee_monthly?: number;
+      registration_fee?:   number;
+      total_due?:          number;
+      amount:              number;   // total amount actually paid
+      method:              "cash" | "mpesa" | "both";
+      cash_amount?:        number;   // used when method = "both"
+      mpesa_amount?:       number;   // used when method = "both"
+      mpesa_reference?:    string;   // M-Pesa transaction code
+      notes?:              string;
     };
 
-    const { full_name, phone, email, class_name, amount, method, reference, notes } = body;
+    const {
+      full_name, phone, email, class_name,
+      student_type = "new",
+      course_fee_monthly = 0,
+      registration_fee = 0,
+      total_due = 0,
+      amount, method,
+      cash_amount, mpesa_amount, mpesa_reference,
+      notes,
+    } = body;
 
     if (!full_name || !phone || !class_name || !amount || !method) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -45,7 +60,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Amount must be greater than 0" }, { status: 400 });
     }
 
-    // Record walk-in payment — no auth account created (deferred to later)
+    // Build a structured notes string that encodes all the extra fields
+    // so they can be parsed back by the list API
+    const metaParts: string[] = [
+      `Class: ${class_name}`,
+      `student_type=${student_type}`,
+      `monthly=${course_fee_monthly}`,
+      `reg_fee=${registration_fee}`,
+      `total_due=${total_due}`,
+    ];
+
+    if (method === "both") {
+      metaParts.push(`cash=${cash_amount ?? 0}`);
+      metaParts.push(`mpesa=${mpesa_amount ?? 0}`);
+    }
+
+    if (mpesa_reference) {
+      metaParts.push(`mpesa_ref=${mpesa_reference}`);
+    }
+
+    const notesString = notes
+      ? `${metaParts.join(". ")}. ${notes}`
+      : metaParts.join(". ");
+
+    // Normalise method for storage: "both" stored as "both", mpesa as "mpesa"
     const { data: payment, error: payError } = await admin
       .from("walk_in_payments")
       .insert({
@@ -56,10 +94,8 @@ export async function POST(req: NextRequest) {
         profile_id:      null,
         amount,
         method,
-        reference:       reference ?? null,
-        notes:           notes
-                           ? `Class: ${class_name}. ${notes}`
-                           : `Class: ${class_name}`,
+        reference:       mpesa_reference ?? null,
+        notes:           notesString,
         recorded_by:     user.id,
       })
       .select("id")

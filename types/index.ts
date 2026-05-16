@@ -120,3 +120,7 @@ export type Payment = {
   status: PaymentStatus;
   created_at: string;
 };
+
+// ─── Receptionist / Walk-in ───────────────────────────────────────────────────
+export type PhysicalStudentType = "new" | "returning";
+export type PhysicalStudentPayMethod = "cash" | "mpesa" | "both";

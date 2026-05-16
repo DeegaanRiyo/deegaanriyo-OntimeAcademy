@@ -12,11 +12,23 @@ function serviceClient() {
 
 const DEFAULT_MEMBERSHIP_FEE = 7500; // KES — fallback for records without membership_fee stored
 
-/** Extracts "Python Bootcamp" from notes stored as "Class: Python Bootcamp" or "Class: Python Bootcamp. extra notes" */
+/** Extracts "Python Bootcamp" from notes stored as "Class: Python Bootcamp. ..." */
 function extractClassName(notes: string | null): string {
   if (!notes) return "";
   const match = notes.match(/^Class:\s*([^.]+)/);
   return match ? match[1].trim() : "";
+}
+
+/** Extracts a named key from structured notes, e.g. "student_type=new" → "new" */
+function extractMeta(notes: string | null, key: string): string | null {
+  if (!notes) return null;
+  const match = notes.match(new RegExp(`${key}=([^.\\s]+)`));
+  return match ? match[1].trim() : null;
+}
+
+function extractMetaNumber(notes: string | null, key: string): number {
+  const v = extractMeta(notes, key);
+  return v ? Number(v) : 0;
 }
 
 export async function GET() {
@@ -118,23 +130,31 @@ export async function GET() {
         outstanding = Math.max(0, agreedFee - period_paid);
       }
 
+      const isPhysical = p.type === "physical_class";
       return {
-        id:             p.id,
-        type:           p.type,
-        name:           p.customer_name,
-        phone:          p.customer_phone,
-        email:          p.customer_email,
-        profile_id:     p.profile_id,
-        membership_fee: agreedFee,      // agreed fee for this membership period
-        amount:         p.amount,       // first payment amount
-        total_paid:     totalPaid,      // all payments combined
-        period_paid,                    // paid in current subscription period
-        outstanding,                    // outstanding for current period (members only)
-        method:         p.method,
-        reference:      p.reference,
-        notes:          p.notes,
-        class_name:     p.type === "physical_class" ? extractClassName(p.notes) : null,
-        payment_date:   p.created_at,
+        id:                  p.id,
+        type:                p.type,
+        name:                p.customer_name,
+        phone:               p.customer_phone,
+        email:               p.customer_email,
+        profile_id:          p.profile_id,
+        membership_fee:      agreedFee,
+        amount:              p.amount,
+        total_paid:          totalPaid,
+        period_paid,
+        outstanding,
+        method:              p.method,
+        reference:           p.reference,
+        notes:               p.notes,
+        class_name:          isPhysical ? extractClassName(p.notes) : null,
+        student_type:        isPhysical ? (extractMeta(p.notes, "student_type") ?? "new") : null,
+        course_fee_monthly:  isPhysical ? extractMetaNumber(p.notes, "monthly") : null,
+        registration_fee:    isPhysical ? extractMetaNumber(p.notes, "reg_fee") : null,
+        total_due:           isPhysical ? extractMetaNumber(p.notes, "total_due") : null,
+        cash_amount:         isPhysical ? extractMetaNumber(p.notes, "cash") : null,
+        mpesa_amount:        isPhysical ? extractMetaNumber(p.notes, "mpesa") : null,
+        mpesa_reference:     isPhysical ? extractMeta(p.notes, "mpesa_ref") : null,
+        payment_date:        p.created_at,
         sub_start,
         due_date,
       };

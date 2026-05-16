@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { PhysicalStudentType, PhysicalStudentPayMethod } from "@/types";
+import PhysicalStudentPaymentFields from "@/components/dashboard/forms/PhysicalStudentPaymentFields";
 
 type Tab = "member" | "student";
 
@@ -131,7 +133,6 @@ function RegisterMemberForm() {
     }
   }
 
-  // ── Success state — show credentials + receipt link ────────
   if (success) {
     return (
       <div>
@@ -271,36 +272,76 @@ function RegisterMemberForm() {
 type StudentSuccess = { payment_id: string; name: string; class_name: string };
 
 function RegisterStudentForm() {
-  const [form, setForm] = useState({
-    full_name: "", phone: "", email: "", class_name: "",
-    amount: "", method: "cash", reference: "", notes: "",
-  });
+  const [studentType,   setStudentType]   = useState<PhysicalStudentType>("new");
+  const [fullName,      setFullName]      = useState("");
+  const [phone,         setPhone]         = useState("");
+  const [email,         setEmail]         = useState("");
+  const [className,     setClassName]     = useState("");
+  const [courseMonthly, setCourseMonthly] = useState("");
+  const [regFee,        setRegFee]        = useState("2000");
+  const [method,        setMethod]        = useState<PhysicalStudentPayMethod>("cash");
+  const [amountPaid,    setAmountPaid]    = useState("");
+  const [cashAmount,    setCashAmount]    = useState("");
+  const [mpesaAmount,   setMpesaAmount]  = useState("");
+  const [mpesaRef,      setMpesaRef]     = useState("");
+  const [notes,         setNotes]        = useState("");
+
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
   const [success, setSuccess] = useState<StudentSuccess | null>(null);
 
-  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-    setForm((p) => ({ ...p, [k]: e.target.value }));
+  // ── computed values ──
+  const monthly  = Number(courseMonthly) || 0;
+  const rFee     = studentType === "new" ? (Number(regFee) || 0) : 0;
+  const totalDue = monthly + rFee;
+  const amtPaid  = method === "both"
+    ? (Number(cashAmount) || 0) + (Number(mpesaAmount) || 0)
+    : Number(amountPaid) || 0;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSuccess(null);
-    if (!form.amount || Number(form.amount) <= 0) {
-      setError("Please enter a valid amount.");
-      return;
+
+    if (monthly <= 0)                              { setError("Enter the monthly course fee."); return; }
+    if (studentType === "new" && rFee <= 0)        { setError("Enter a valid registration fee."); return; }
+    if (amtPaid <= 0)                              { setError("Enter the amount paid."); return; }
+    if (method === "both") {
+      if ((Number(cashAmount) || 0) <= 0 && (Number(mpesaAmount) || 0) <= 0) {
+        setError("Enter cash and/or M-Pesa amounts for split payment."); return;
+      }
     }
+
     setLoading(true);
     try {
       const res = await fetch("/api/receptionist/register-physical-student", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, amount: Number(form.amount) }),
+        body: JSON.stringify({
+          full_name:          fullName,
+          phone:              phone,
+          email:              email || undefined,
+          class_name:         className,
+          student_type:       studentType,
+          course_fee_monthly: monthly,
+          registration_fee:   rFee,
+          total_due:          totalDue,
+          amount:             amtPaid,
+          method,
+          cash_amount:        method === "both" ? (Number(cashAmount) || 0) : undefined,
+          mpesa_amount:       method === "both" ? (Number(mpesaAmount) || 0) : undefined,
+          mpesa_reference:    (method === "mpesa" || method === "both") ? mpesaRef : undefined,
+          notes:              notes || undefined,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Failed");
-      setSuccess({ payment_id: json.payment_id, name: form.full_name, class_name: form.class_name });
-      setForm({ full_name: "", phone: "", email: "", class_name: "", amount: "", method: "cash", reference: "", notes: "" });
+      setSuccess({ payment_id: json.payment_id, name: fullName, class_name: className });
+      
+      // Reset
+      setFullName(""); setPhone(""); setEmail(""); setClassName("");
+      setCourseMonthly(""); setRegFee("2000"); setAmountPaid("");
+      setCashAmount(""); setMpesaAmount(""); setMpesaRef(""); setNotes("");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -314,7 +355,7 @@ function RegisterStudentForm() {
         borderRadius: "10px", padding: "20px" }}>
         <div style={{ fontWeight: 700, color: "var(--green)", marginBottom: "8px", fontSize: ".9rem" }}>
           <i className="fas fa-check-circle" style={{ marginRight: "8px" }} />
-          {success.name} recorded for {success.class_name}
+          {success.name} registered for {success.class_name}
         </div>
         <div style={{ display: "flex", gap: "10px", marginTop: "16px", flexWrap: "wrap" }}>
           <Link href={`/dashboard/receptionist/receipt/${success.payment_id}`}
@@ -335,44 +376,79 @@ function RegisterStudentForm() {
     <form onSubmit={submit}>
       {error && <Alert type="error" msg={error} />}
 
+      {/* Student Category */}
+      <Field label="Student Category" required>
+        <div style={{ display: "flex", gap: "10px" }}>
+          {(["new", "returning"] as PhysicalStudentType[]).map((type) => (
+            <label key={type} style={{
+              flex: 1, display: "flex", alignItems: "center", gap: "8px",
+              padding: "10px 14px", borderRadius: "8px", cursor: "pointer",
+              border: studentType === type
+                ? "1.5px solid var(--teal2)"
+                : "1px solid rgba(17,17,17,.15)",
+              background: studentType === type
+                ? "rgba(193,68,14,.06)"
+                : "rgba(17,17,17,.04)",
+              fontSize: ".85rem", fontWeight: studentType === type ? 700 : 400,
+              color: studentType === type ? "var(--teal2)" : "var(--muted)",
+              transition: "all .15s",
+            }}>
+              <input
+                type="radio" name="stype" value={type}
+                checked={studentType === type}
+                onChange={() => setStudentType(type)}
+                style={{ accentColor: "var(--teal2)" }}
+              />
+              <i className={`fas ${type === "new" ? "fa-user-plus" : "fa-user-check"}`} />
+              {type === "new" ? "New Student" : "Current / Old Student"}
+            </label>
+          ))}
+        </div>
+        {studentType === "returning" && (
+          <div style={{ marginTop: "8px", fontSize: ".75rem", color: "var(--muted)",
+            background: "rgba(17,17,17,.03)", borderRadius: "6px", padding: "7px 10px",
+            border: "1px solid rgba(17,17,17,.08)" }}>
+            <i className="fas fa-info-circle" style={{ marginRight: "5px" }} />
+            Student was enrolled before the system — no registration fee applies.
+          </div>
+        )}
+      </Field>
+
+      {/* Personal info */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
         <Field label="Full Name" required>
-          <Input value={form.full_name} onChange={set("full_name")} placeholder="Ahmed Hassan" required />
+          <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Ahmed Hassan" required />
         </Field>
         <Field label="Phone" required>
-          <Input value={form.phone} onChange={set("phone")} placeholder="07XX XXX XXX" required />
+          <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" required />
         </Field>
         <Field label="Email">
-          <Input type="email" value={form.email} onChange={set("email")} placeholder="ahmed@email.com" />
+          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ahmed@email.com" />
         </Field>
         <Field label="Class / Course" required>
-          <Input value={form.class_name} onChange={set("class_name")} placeholder="e.g. Python Bootcamp — Batch 3" required />
+          <Input value={className} onChange={(e) => setClassName(e.target.value)} placeholder="e.g. Python Bootcamp — Batch 3" required />
         </Field>
-        <Field label="Amount (KES)" required>
-          <Input type="number" min="1" value={form.amount} onChange={set("amount")} placeholder="e.g. 5000" required />
-        </Field>
-        <Field label="Payment Method" required>
-          <Select value={form.method} onChange={(v) => setForm((p) => ({ ...p, method: v }))}>
-            <option value="cash">Cash</option>
-            <option value="mpesa">M-Pesa</option>
-          </Select>
-        </Field>
-        {form.method === "mpesa" && (
-          <Field label="M-Pesa Code">
-            <Input value={form.reference} onChange={set("reference")} placeholder="e.g. QA12BCD3E4" />
-          </Field>
-        )}
       </div>
 
+      <PhysicalStudentPaymentFields
+        studentType={studentType} method={method} setMethod={setMethod}
+        courseMonthly={courseMonthly} setCourseMonthly={setCourseMonthly}
+        regFee={regFee} setRegFee={setRegFee}
+        amountPaid={amountPaid} setAmountPaid={setAmountPaid}
+        cashAmount={cashAmount} setCashAmount={setCashAmount}
+        mpesaAmount={mpesaAmount} setMpesaAmount={setMpesaAmount}
+        mpesaRef={mpesaRef} setMpesaRef={setMpesaRef}
+      />
+
       <Field label="Notes">
-        <Textarea value={form.notes} onChange={set("notes")} placeholder="Any additional notes..." />
+        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any additional notes..." />
       </Field>
 
       <button type="submit" className="btn-primary" disabled={loading}
-        style={{ border: "none", cursor: "pointer", opacity: loading ? .6 : 1 }}>
+        style={{ border: "none", cursor: "pointer", opacity: loading ? .6 : 1, width: "100%", justifyContent: "center" }}>
         {loading
-          ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: "8px" }} />Recording…</>
-          : <><i className="fas fa-user-graduate" style={{ marginRight: "8px" }} />Record Student & Payment</>
+          ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: "8px" }} />Registering…</>
+          : <><i className="fas fa-user-graduate" style={{ marginRight: "8px" }} />Register Student · KES {amtPaid > 0 ? amtPaid.toLocaleString() : "—"} paid</>
         }
       </button>
     </form>
@@ -413,7 +489,7 @@ export default function RegisterClient() {
       </div>
 
       {/* Form card */}
-      <div className="card" style={{ maxWidth: "680px" }}>
+      <div className="card" style={{ maxWidth: "700px" }}>
         <div className="card-head">
           <h3>
             <i className={`fas ${TABS.find((t) => t.id === tab)!.icon}`} style={{ marginRight: "8px" }} />
