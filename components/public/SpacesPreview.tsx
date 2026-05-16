@@ -20,9 +20,9 @@ export default async function SpacesPreview() {
   };
 
   const placeholderImages: Record<string, string> = {
-    boardroom:         "https://images.unsplash.com/photo-1517502884422-41eaead166d4?w=900&q=80",
-    "conference-room": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=900&q=80",
-    "podcast-studio":  "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=900&q=80",
+    boardroom:         "/ontimemedia/boardroom.jpeg",
+    "conference-room": "/ontimemedia/confrenceroom.jpeg",
+    "podcast-studio":  "/ontimemedia/podcast.png",
     "content-studio":  "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=900&q=80",
   };
 

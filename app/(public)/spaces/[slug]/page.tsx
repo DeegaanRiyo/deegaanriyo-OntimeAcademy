@@ -9,23 +9,23 @@ import SpaceScheduleClient from "./SpaceScheduleClient";
 // ─── Static data maps ───────────────────────────────────────────────────────
 
 const placeholderImages: Record<string, string> = {
-  boardroom:          "https://images.unsplash.com/photo-1517502884422-41eaead166d4?w=1200&q=80",
-  "conference-room":  "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&q=80",
-  "podcast-studio":   "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=1200&q=80",
+  boardroom:          "/ontimemedia/boardroom.jpeg",
+  "conference-room":  "/ontimemedia/confrenceroom.jpeg",
+  "podcast-studio":   "/ontimemedia/podcast.png",
   "content-studio":   "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=1200&q=80",
 };
 
 const galleryFallback: Record<string, [string, string]> = {
   boardroom: [
-    "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=75",
-    "https://images.unsplash.com/photo-1497366754035-f200586c6ef0?w=800&q=75",
+    "/ontimemedia/confrence.jpeg",
+    "/ontimemedia/coworkingspace.png",
   ],
   "conference-room": [
-    "https://images.unsplash.com/photo-1431540015161-0bf868a2d407?w=800&q=75",
-    "https://images.unsplash.com/photo-1560439514-4e9645039924?w=800&q=75",
+    "/ontimemedia/confrence.jpeg",
+    "/ontimemedia/boardroom.jpeg",
   ],
   "podcast-studio": [
-    "https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=800&q=75",
+    "/ontimemedia/podcast.png",
     "https://images.unsplash.com/photo-1493552532829-d4218da09e96?w=800&q=75",
   ],
   "content-studio": [

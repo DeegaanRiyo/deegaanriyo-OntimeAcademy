@@ -31,11 +31,11 @@ export default async function HomePage() {
         <section id="HERO">
           {/* Background Slideshow */}
           <div className="slides" id="slideshow">
-            {[
-              { src: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920&q=85", alt: "Workspace" },
-              { src: "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=1920&q=85", alt: "Coworking" },
-              { src: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1920&q=85", alt: "Board Room" },
-              { src: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=1920&q=85", alt: "Studio" },
+            [
+              { src: "/ontimemedia/coworkingspace.png", alt: "Workspace" },
+              { src: "/ontimemedia/herobacground.jpeg", alt: "Coworking" },
+              { src: "/ontimemedia/boardroom.jpeg", alt: "Board Room" },
+              { src: "/ontimemedia/podcast.png", alt: "Studio" },
               { src: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=1920&q=85", alt: "Team" },
             ].map((s, i) => (
               <div key={i} className={`slide${i === 0 ? " active" : ""}`}>
@@ -59,17 +59,17 @@ export default async function HomePage() {
           {/* Vertical strip */}
           <div className="hero-strip">
             <div className="hero-strip-inner" id="heroStrip">
-              {[
-                "https://images.unsplash.com/photo-1497366216548-37526070297c?w=200&q=70",
-                "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=200&q=70",
-                "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=200&q=70",
-                "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=200&q=70",
+              [
+                "/ontimemedia/coworkingspace.png",
+                "/ontimemedia/herobacground.jpeg",
+                "/ontimemedia/boardroom.jpeg",
+                "/ontimemedia/podcast.png",
                 "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=200&q=70",
-                "https://images.unsplash.com/photo-1517502884422-41eaead166d4?w=200&q=70",
-                "https://images.unsplash.com/photo-1497366216548-37526070297c?w=200&q=70",
-                "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=200&q=70",
-                "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=200&q=70",
-                "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=200&q=70",
+                "/ontimemedia/confrenceroom.jpeg",
+                "/ontimemedia/coworkingspace.png",
+                "/ontimemedia/herobacground.jpeg",
+                "/ontimemedia/boardroom.jpeg",
+                "/ontimemedia/podcast.png",
               ].map((src, i) => (
                 <div key={i} className="simg">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -203,9 +203,9 @@ export default async function HomePage() {
           <div className="sec-inner about-grid">
             <div className="about-stack rl">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <div className="ai1"><img src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=900&q=85" alt="Ontime Interior" /></div>
+              <div className="ai1"><img src="/ontimemedia/section2a.jpeg" alt="Ontime Interior" /></div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <div className="ai2"><img src="https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=500&q=85" alt="Meeting" /></div>
+              <div className="ai2"><img src="/ontimemedia/confrenceroom.jpeg" alt="Meeting" /></div>
               <div className="a-badge">
                 <div className="ab-n">2020</div>
                 <div className="ab-l">Est. Nairobi</div>
@@ -259,21 +259,21 @@ export default async function HomePage() {
                   {
                     badge: "Meeting Room", badgeBg: "var(--teal)", priceColor: "var(--teal2)",
                     borderColor: "rgba(15,179,187,.2)", pillClass: "tl",
-                    img: "https://images.unsplash.com/photo-1517502884422-41eaead166d4?w=900&q=85",
+                    img: "/ontimemedia/confrenceroom.jpeg",
                     pills: ["Up to 8 people", "Smart TV", "Wi-Fi", "Whiteboard", "Air-Con"],
                     waText: `I'd like to book ${space.name}`,
                   },
                   {
                     badge: "Board Room", badgeBg: "var(--gold)", priceColor: "var(--gold2)",
                     borderColor: "rgba(201,146,26,.25)", pillClass: "gd",
-                    img: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=900&q=85",
+                    img: "/ontimemedia/boardroom.jpeg",
                     pills: ["Up to 14 people", "Dual Displays", "Video Conf.", "Executive Setup"],
                     waText: `I'd like to book ${space.name}`,
                   },
                   {
                     badge: "Content Studio", badgeBg: "#7c3aed", priceColor: "#a78bfa",
                     borderColor: "rgba(124,58,237,.25)", pillClass: "pu",
-                    img: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=900&q=85",
+                    img: "/ontimemedia/podcast.png",
                     pills: ["4K Cameras", "Ring Lights", "Podcast Mic", "Green Screen"],
                     waText: `I'd like to book ${space.name}`,
                   },
@@ -324,7 +324,7 @@ export default async function HomePage() {
               <div style={{ position: "relative" }}>
                 <div className="studio-main-img">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=900&q=85" alt="Studio" loading="lazy" />
+                  <img src="/ontimemedia/podcast.png" alt="Studio" loading="lazy" />
                 </div>
                 <div className="studio-float-tag">Podcast Ready</div>
               </div>
@@ -377,22 +377,22 @@ export default async function HomePage() {
         <div className="hscroll-wrap">
           <div className="hscroll">
             {[
-              { src: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80", lbl: "Co-Working" },
-              { src: "https://images.unsplash.com/photo-1517502884422-41eaead166d4?w=400&q=80", lbl: "Meeting Room 1" },
-              { src: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&q=80", lbl: "Board Room" },
-              { src: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400&q=80", lbl: "Content Studio" },
+              { src: "/ontimemedia/coworkingspace.png", lbl: "Co-Working" },
+              { src: "/ontimemedia/confrenceroom.jpeg", lbl: "Meeting Room 1" },
+              { src: "/ontimemedia/boardroom.jpeg", lbl: "Board Room" },
+              { src: "/ontimemedia/podcast.png", lbl: "Content Studio" },
               { src: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400&q=80", lbl: "Academy Classes" },
               { src: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&q=80", lbl: "Team Sessions" },
-              { src: "https://images.unsplash.com/photo-1560439514-4e9645039924?w=400&q=80", lbl: "Events" },
+              { src: "/ontimemedia/confrence.jpeg", lbl: "Events" },
               { src: "https://images.unsplash.com/photo-1543269865-cbf427effbad?w=400&q=80", lbl: "Networking" },
               /* duplicate for seamless loop */
-              { src: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80", lbl: "Co-Working" },
-              { src: "https://images.unsplash.com/photo-1517502884422-41eaead166d4?w=400&q=80", lbl: "Meeting Room 1" },
-              { src: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&q=80", lbl: "Board Room" },
-              { src: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400&q=80", lbl: "Content Studio" },
+              { src: "/ontimemedia/coworkingspace.png", lbl: "Co-Working" },
+              { src: "/ontimemedia/confrenceroom.jpeg", lbl: "Meeting Room 1" },
+              { src: "/ontimemedia/boardroom.jpeg", lbl: "Board Room" },
+              { src: "/ontimemedia/podcast.png", lbl: "Content Studio" },
               { src: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400&q=80", lbl: "Academy Classes" },
               { src: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&q=80", lbl: "Team Sessions" },
-              { src: "https://images.unsplash.com/photo-1560439514-4e9645039924?w=400&q=80", lbl: "Events" },
+              { src: "/ontimemedia/confrence.jpeg", lbl: "Events" },
               { src: "https://images.unsplash.com/photo-1543269865-cbf427effbad?w=400&q=80", lbl: "Networking" },
             ].map((item, i) => (
               <div key={i} className="hsc">
@@ -617,7 +617,7 @@ export default async function HomePage() {
         <section id="CTA">
           <div className="cta-bg">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920&q=80" alt="CTA background" />
+            <img src="/ontimemedia/herobacground.jpeg" alt="CTA background" />
           </div>
           <div className="cta-inner">
             <div className="sec-tag rv" style={{ justifyContent: "center" }}>Let&apos;s get started</div>

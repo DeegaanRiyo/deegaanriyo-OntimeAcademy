@@ -9,7 +9,7 @@ export default function AboutSection() {
         <div className="relative">
           <div className="absolute -top-3 -left-3 w-14 h-1 bg-teal-primary" />
           <img
-            src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=900&q=80"
+            src="/ontimemedia/section2a.jpeg"
             alt="Ontime Academy & Co-working Space Nairobi"
             className="w-full aspect-video object-cover rounded-lg block"
           />
