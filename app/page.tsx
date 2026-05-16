@@ -31,7 +31,7 @@ export default async function HomePage() {
         <section id="HERO">
           {/* Background Slideshow */}
           <div className="slides" id="slideshow">
-            [
+            {[
               { src: "/ontimemedia/coworkingspace.png", alt: "Workspace" },
               { src: "/ontimemedia/herobacground.jpeg", alt: "Coworking" },
               { src: "/ontimemedia/boardroom.jpeg", alt: "Board Room" },
@@ -59,7 +59,7 @@ export default async function HomePage() {
           {/* Vertical strip */}
           <div className="hero-strip">
             <div className="hero-strip-inner" id="heroStrip">
-              [
+              {[
                 "/ontimemedia/coworkingspace.png",
                 "/ontimemedia/herobacground.jpeg",
                 "/ontimemedia/boardroom.jpeg",
