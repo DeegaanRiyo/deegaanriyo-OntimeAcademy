@@ -50,22 +50,57 @@ export async function GET() {
     const { data: payments, error } = await admin
       .from("walk_in_payments")
       .select("id, type, customer_name, customer_phone, customer_email, profile_id, membership_fee, amount, method, reference, notes, created_at")
-      .in("type", ["membership", "physical_class"])
+      .in("type", ["membership", "physical_class", "online_class"])
       .order("created_at", { ascending: true }); // oldest first so we get the registration record first
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // De-duplicate: one entry per profile_id (members) or phone (physical students)
-    // Keep the earliest as the "main" record; sum all payments
+    // De-duplicate strategy:
+    //   Members:          key = profile_id
+    //   Physical (reg):   key = "phone:{phone}:{class_name}"  ← one entry per class enrollment
+    //   Physical (extra): no class metadata → additional payment attributed to
+    //                     the LATEST enrollment for that phone
+    //
+    // This prevents merging of separate class registrations for the same phone number
+    // (e.g. student re-enrolls for a different course, or two students share a phone).
+
     const memberMap = new Map<string, any>();
-    const allPaymentsByKey = new Map<string, number>(); // key → total paid
+    const regAmountsByKey   = new Map<string, number>(); // key → sum of registration payments
+    const addAmountsByPhone = new Map<string, number>(); // phone → sum of additional payments
+    const latestRegByPhone  = new Map<string, string>(); // phone → most recent reg key
 
     for (const p of payments ?? []) {
-      const key = p.profile_id ?? `phone:${p.customer_phone}`;
-      // Track total paid per person
-      allPaymentsByKey.set(key, (allPaymentsByKey.get(key) ?? 0) + (p.amount ?? 0));
-      // First occurrence = registration record
-      if (!memberMap.has(key)) memberMap.set(key, p);
+      if (p.type === "membership") {
+        const key = p.profile_id as string;
+        if (!key) continue;
+        regAmountsByKey.set(key, (regAmountsByKey.get(key) ?? 0) + (p.amount ?? 0));
+        if (!memberMap.has(key)) memberMap.set(key, p);
+      } else if (p.type === "physical_class" || p.type === "online_class") {
+        const className = extractClassName(p.notes);
+        if (className) {
+          // Registration payment — has class metadata
+          const key = `phone:${p.customer_phone}:${className}`;
+          regAmountsByKey.set(key, (regAmountsByKey.get(key) ?? 0) + (p.amount ?? 0));
+          if (!memberMap.has(key)) memberMap.set(key, p);
+          // Track latest (payments sorted ASC, so last write = most recent)
+          latestRegByPhone.set(p.customer_phone, key);
+        } else {
+          // Additional / follow-up payment — no class metadata
+          addAmountsByPhone.set(
+            p.customer_phone,
+            (addAmountsByPhone.get(p.customer_phone) ?? 0) + (p.amount ?? 0),
+          );
+        }
+      }
+    }
+
+    // Attribute additional payments to the latest enrollment for that phone
+    const allPaymentsByKey = new Map<string, number>(regAmountsByKey);
+    for (const [phone, addAmt] of addAmountsByPhone) {
+      const regKey = latestRegByPhone.get(phone);
+      if (regKey) {
+        allPaymentsByKey.set(regKey, (allPaymentsByKey.get(regKey) ?? 0) + addAmt);
+      }
     }
 
     // Fetch subscription info for member profile_ids
@@ -107,7 +142,10 @@ export async function GET() {
     }
 
     const result = Array.from(memberMap.values()).map((p) => {
-      const key           = p.profile_id ?? `phone:${p.customer_phone}`;
+      const isPhysicalReg = p.type === "physical_class" || p.type === "online_class";
+      const regClass      = isPhysicalReg ? (extractClassName(p.notes) || "") : "";
+      const key           = p.profile_id
+        ?? (regClass ? `phone:${p.customer_phone}:${regClass}` : `phone:${p.customer_phone}`);
       const totalPaid     = allPaymentsByKey.get(key) ?? p.amount;
       const agreedFee     = p.membership_fee ?? DEFAULT_MEMBERSHIP_FEE;
 
@@ -130,7 +168,7 @@ export async function GET() {
         outstanding = Math.max(0, agreedFee - period_paid);
       }
 
-      const isPhysical = p.type === "physical_class";
+      const isPhysical = p.type === "physical_class" || p.type === "online_class";
       return {
         id:                  p.id,
         type:                p.type,

@@ -14,11 +14,13 @@ function serviceClient() {
 const TYPE_LABELS: Record<string, string> = {
   membership:     "Membership",
   physical_class: "Physical Class",
+  online_class:   "Online Class",
   space_rental:   "Space Rental",
 };
 const TYPE_COLORS: Record<string, string> = {
   membership:     "var(--teal2)",
   physical_class: "var(--blue)",
+  online_class:   "#7c3aed",
   space_rental:   "var(--gold)",
 };
 const METHOD_LABELS: Record<string, string> = {
@@ -53,7 +55,7 @@ export default async function ManagerOverviewPage() {
   const walkInPayments       = walkIns ?? [];
   const walkInTotal          = walkInPayments.reduce((s, p: any) => s + (p.amount ?? 0), 0);
   const membershipRevenue    = walkInPayments.filter((p: any) => p.type === "membership").reduce((s, p: any) => s + p.amount, 0);
-  const physicalClassRevenue = walkInPayments.filter((p: any) => p.type === "physical_class").reduce((s, p: any) => s + p.amount, 0);
+  const physicalClassRevenue = walkInPayments.filter((p: any) => p.type === "physical_class" || p.type === "online_class").reduce((s, p: any) => s + p.amount, 0);
   const spaceRentalRevenue   = walkInPayments.filter((p: any) => p.type === "space_rental").reduce((s, p: any) => s + p.amount, 0);
 
   // ── Online revenue ──────────────────────────────────────

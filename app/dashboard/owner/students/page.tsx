@@ -11,6 +11,25 @@ function service() {
   );
 }
 
+// ── Notes helpers (mirrors walk-in-members API) ───────────────────────────────
+
+function extractClassName(notes: string | null): string {
+  if (!notes) return "";
+  const match = notes.match(/^Class:\s*([^.]+)/);
+  return match ? match[1].trim() : "";
+}
+function extractMeta(notes: string | null, key: string): string | null {
+  if (!notes) return null;
+  const match = notes.match(new RegExp(`${key}=([^.\\s]+)`));
+  return match ? match[1].trim() : null;
+}
+function extractMetaNumber(notes: string | null, key: string): number {
+  const v = extractMeta(notes, key);
+  return v ? Number(v) : 0;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default async function OwnerStudentsPage() {
   const admin = service();
 
@@ -18,15 +37,17 @@ export default async function OwnerStudentsPage() {
     { data: walkInsRaw },
     { data: studentsRaw },
     { data: enrolmentsRaw },
+    { data: flagsRaw },
   ] = await Promise.all([
-    // Physical class students (from walk_in_payments)
+    // Physical + online class students from walk_in_payments
+    // class_name lives inside the notes field — parsed below
     admin
       .from("walk_in_payments")
-      .select("id, customer_name, customer_phone, class_name, amount, method, created_at")
-      .eq("type", "physical_class")
-      .order("created_at", { ascending: false }),
+      .select("id, type, customer_name, customer_phone, amount, method, notes, created_at")
+      .in("type", ["physical_class", "online_class"])
+      .order("created_at", { ascending: true }), // asc → de-dup keeps first (registration)
 
-    // Online students (profiles)
+    // Online students (profiles with role=student)
     admin
       .from("profiles")
       .select("id, full_name, email, created_at")
@@ -37,22 +58,76 @@ export default async function OwnerStudentsPage() {
     admin
       .from("enrolments")
       .select("student_id, course_id, created_at, last_accessed_at, courses!inner(title, mode)"),
+
+    // Open flags (receptionist-flagged students)
+    admin
+      .from("student_flags")
+      .select("id, payment_id, message, status, created_at, flagged_by_profile:profiles!student_flags_flagged_by_fkey(full_name)")
+      .eq("status", "open"),
   ]);
 
-  // Map physical students
-  const physical: PhysicalStudent[] = (walkInsRaw ?? []).map((p: any) => ({
-    id:           p.id,
-    name:         p.customer_name ?? "—",
-    phone:        p.customer_phone ?? "—",
-    class_name:   p.class_name ?? "General",
-    total_paid:   p.amount ?? 0,
-    method:       p.method ?? "",
-    payment_date: p.created_at,
-  }));
+  // ── De-duplicate physical students (same logic as walk-in-members) ───────────
+  // Key: phone:class_name — one entry per class enrollment
+  // Also accumulate total_paid across all payments for same phone
+  const regMap   = new Map<string, any>();
+  const totalMap = new Map<string, number>(); // phone:class → cumulative paid
+  const addMap   = new Map<string, number>(); // phone → additional payments total
+  const latestByPhone = new Map<string, string>(); // phone → latest reg key
 
-  // Map online students with enrolments
-  const enrolments = (enrolmentsRaw ?? []) as any[];
-  const onlineEnrols = enrolments.filter((e: any) => (e.courses as any)?.mode !== "physical");
+  for (const p of (walkInsRaw ?? []) as any[]) {
+    const cls = extractClassName(p.notes);
+    if (cls) {
+      const key = `phone:${p.customer_phone}:${cls}`;
+      totalMap.set(key, (totalMap.get(key) ?? 0) + (p.amount ?? 0));
+      if (!regMap.has(key)) regMap.set(key, p);
+      latestByPhone.set(p.customer_phone, key);
+    } else {
+      addMap.set(p.customer_phone, (addMap.get(p.customer_phone) ?? 0) + (p.amount ?? 0));
+    }
+  }
+  // Add additional payments to latest enrollment
+  for (const [phone, addAmt] of addMap) {
+    const key = latestByPhone.get(phone);
+    if (key) totalMap.set(key, (totalMap.get(key) ?? 0) + addAmt);
+  }
+
+  // Build flag lookup: payment_id → flag[]
+  const flagsByPayment = new Map<string, { id: string; message: string; flagged_by: string | null; created_at: string }[]>();
+  for (const f of (flagsRaw ?? []) as any[]) {
+    const arr = flagsByPayment.get(f.payment_id) ?? [];
+    arr.push({
+      id:         f.id,
+      message:    f.message,
+      flagged_by: (f.flagged_by_profile as any)?.full_name ?? null,
+      created_at: f.created_at,
+    });
+    flagsByPayment.set(f.payment_id, arr);
+  }
+
+  // Map to PhysicalStudent[]
+  const physical: PhysicalStudent[] = Array.from(regMap.values()).map((p: any) => {
+    const cls         = extractClassName(p.notes) || "Unassigned";
+    const key         = `phone:${p.customer_phone}:${cls === "Unassigned" ? "" : cls}`;
+    const studentType = extractMeta(p.notes, "student_type");
+    const totalDue    = extractMetaNumber(p.notes, "total_due");
+    return {
+      id:           p.id,
+      type:         p.type,
+      name:         p.customer_name ?? "—",
+      phone:        p.customer_phone ?? "—",
+      class_name:   cls,
+      student_type: studentType,
+      total_paid:   totalMap.get(key) ?? (p.amount ?? 0),
+      total_due:    totalDue || null,
+      method:       p.method ?? "",
+      payment_date: p.created_at,
+      open_flags:   flagsByPayment.get(p.id) ?? [],
+    };
+  });
+
+  // ── Online (platform) students ────────────────────────────────────────────────
+  const enrolments    = (enrolmentsRaw ?? []) as any[];
+  const onlineEnrols  = enrolments.filter((e: any) => (e.courses as any)?.mode !== "physical");
 
   const online: OnlineStudent[] = (studentsRaw ?? []).map((s: any) => ({
     id:         s.id,
@@ -70,8 +145,8 @@ export default async function OwnerStudentsPage() {
       })),
   }));
 
-  // Unique class count for physical
   const physicalClasses = new Set(physical.map((s) => s.class_name)).size;
+  const openFlagCount   = (flagsRaw ?? []).length;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -79,20 +154,33 @@ export default async function OwnerStudentsPage() {
       <div className="sec-head">
         <div className="sec-head-left">
           <h2>Students</h2>
-          <p>Physical class students and online course enrolments</p>
+          <p>Physical and online class students registered by reception</p>
         </div>
+        {openFlagCount > 0 && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: "8px",
+            background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.25)",
+            borderRadius: "8px", padding: "8px 14px",
+          }}>
+            <i className="fas fa-flag" style={{ color: "#dc2626", fontSize: ".85rem" }} />
+            <span style={{ fontSize: ".82rem", fontWeight: 700, color: "#dc2626" }}>
+              {openFlagCount} open flag{openFlagCount !== 1 ? "s" : ""} need review
+            </span>
+          </div>
+        )}
       </div>
 
       {/* KPI strip */}
       <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
         {[
-          { label: "Physical Students", count: physical.length, color: "var(--teal2)", icon: "fa-chalkboard-teacher" },
-          { label: "Physical Classes",  count: physicalClasses, color: "var(--teal)",  icon: "fa-door-open"          },
-          { label: "Online Students",   count: online.length,   color: "#2563eb",      icon: "fa-laptop"             },
-          { label: "Total Enrolments",  count: onlineEnrols.length, color: "#8b5cf6", icon: "fa-graduation-cap"     },
+          { label: "Physical Students", count: physical.filter((s) => s.type === "physical_class").length, color: "var(--teal2)", icon: "fa-chalkboard-teacher" },
+          { label: "Online Students",   count: physical.filter((s) => s.type === "online_class").length,   color: "#7c3aed",      icon: "fa-wifi"             },
+          { label: "Classes",           count: physicalClasses,                                             color: "var(--teal)",  icon: "fa-door-open"        },
+          { label: "Platform Students", count: online.length,                                               color: "#2563eb",      icon: "fa-laptop"           },
+          { label: "Open Flags",        count: openFlagCount,                                               color: "#dc2626",      icon: "fa-flag"             },
         ].map(({ label, count, color, icon }) => (
           <div key={label} style={{
-            flex: 1, minWidth: "130px",
+            flex: 1, minWidth: "120px",
             background: "#fff", border: "1px solid rgba(17,17,17,.08)", borderRadius: "10px",
             padding: "14px 16px", borderTop: `3px solid ${color}`,
           }}>

@@ -7,12 +7,13 @@ import PhysicalStudentPaymentFields from "@/components/dashboard/forms/PhysicalS
 
 type Student = {
   id:                  string;
+  type:                string;
   name:                string;
   phone:               string;
   email:               string | null;
   profile_id:          string | null;
   class_name:          string;
-  student_type:        "new" | "returning" | null;
+  student_type:        "new" | "returning" | "online" | null;
   amount:              number;
   total_paid:          number;
   total_due:           number | null;
@@ -29,7 +30,7 @@ type Student = {
   payment_date:        string;
 };
 
-type CategoryFilter = "all" | "new" | "returning";
+type CategoryFilter = "all" | "new" | "returning" | "online";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -99,6 +100,7 @@ function RegisterModal({ onClose, onRegistered }: {
     if (monthly <= 0)                              { setError("Enter the monthly course fee."); return; }
     if (studentType === "new" && rFee <= 0)        { setError("Enter a valid registration fee."); return; }
     if (amtPaid <= 0)                              { setError("Enter the amount paid."); return; }
+    // online: reg fee is optional — no extra validation needed
     setLoading(true);
     try {
       const res = await fetch("/api/receptionist/register-physical-student", {
@@ -158,17 +160,22 @@ function RegisterModal({ onClose, onRegistered }: {
             <div style={{ marginBottom: "14px" }}>
               <label style={lbl}>Student Category *</label>
               <div style={{ display: "flex", gap: "8px" }}>
-                {(["new", "returning"] as PhysicalStudentType[]).map((type) => (
-                  <label key={type} style={{ flex: 1, display: "flex", alignItems: "center", gap: "7px", padding: "9px 12px", borderRadius: "8px", cursor: "pointer", border: studentType === type ? "1.5px solid var(--teal2)" : "1px solid rgba(17,17,17,.15)", background: studentType === type ? "rgba(193,68,14,.06)" : "rgba(17,17,17,.04)", fontSize: ".82rem", fontWeight: studentType === type ? 700 : 400, color: studentType === type ? "var(--teal2)" : "var(--muted)" }}>
-                    <input type="radio" name="reg_stype" value={type} checked={studentType === type} onChange={() => setStudentType(type)} style={{ accentColor: "var(--teal2)" }} />
-                    <i className={`fas ${type === "new" ? "fa-user-plus" : "fa-user-check"}`} />
-                    {type === "new" ? "New Student" : "Current / Old Student"}
+                {(["new", "returning", "online"] as PhysicalStudentType[]).map((type) => (
+                  <label key={type} style={{ flex: 1, display: "flex", alignItems: "center", gap: "7px", padding: "9px 12px", borderRadius: "8px", cursor: "pointer", border: studentType === type ? `1.5px solid ${type === "online" ? "#7c3aed" : "var(--teal2)"}` : "1px solid rgba(17,17,17,.15)", background: studentType === type ? (type === "online" ? "rgba(124,58,237,.06)" : "rgba(193,68,14,.06)") : "rgba(17,17,17,.04)", fontSize: ".82rem", fontWeight: studentType === type ? 700 : 400, color: studentType === type ? (type === "online" ? "#7c3aed" : "var(--teal2)") : "var(--muted)" }}>
+                    <input type="radio" name="reg_stype" value={type} checked={studentType === type} onChange={() => setStudentType(type)} style={{ accentColor: type === "online" ? "#7c3aed" : "var(--teal2)" }} />
+                    <i className={`fas ${type === "new" ? "fa-user-plus" : type === "returning" ? "fa-user-check" : "fa-wifi"}`} />
+                    {type === "new" ? "New Student" : type === "returning" ? "Current / Old" : "Online"}
                   </label>
                 ))}
               </div>
               {studentType === "returning" && (
                 <div style={{ marginTop: "7px", fontSize: ".73rem", color: "var(--muted)", background: "rgba(17,17,17,.03)", borderRadius: "6px", padding: "6px 10px", border: "1px solid rgba(17,17,17,.08)" }}>
                   <i className="fas fa-info-circle" style={{ marginRight: "5px" }} />Student was enrolled before the system — no registration fee applies.
+                </div>
+              )}
+              {studentType === "online" && (
+                <div style={{ marginTop: "7px", fontSize: ".73rem", color: "#7c3aed", background: "rgba(124,58,237,.05)", borderRadius: "6px", padding: "6px 10px", border: "1px solid rgba(124,58,237,.2)" }}>
+                  <i className="fas fa-wifi" style={{ marginRight: "5px" }} />Online student — attends remotely. Registration fee is optional.
                 </div>
               )}
             </div>
@@ -294,17 +301,22 @@ function EditModal({ student, onClose, onSaved }: {
           <div style={{ marginBottom: "14px" }}>
             <label style={lbl}>Student Category *</label>
             <div style={{ display: "flex", gap: "8px" }}>
-              {(["new", "returning"] as PhysicalStudentType[]).map((type) => (
-                <label key={type} style={{ flex: 1, display: "flex", alignItems: "center", gap: "7px", padding: "9px 12px", borderRadius: "8px", cursor: "pointer", border: studentType === type ? "1.5px solid var(--teal2)" : "1px solid rgba(17,17,17,.15)", background: studentType === type ? "rgba(193,68,14,.06)" : "rgba(17,17,17,.04)", fontSize: ".82rem", fontWeight: studentType === type ? 700 : 400, color: studentType === type ? "var(--teal2)" : "var(--muted)" }}>
-                  <input type="radio" name="edit_stype" value={type} checked={studentType === type} onChange={() => setStudentType(type)} style={{ accentColor: "var(--teal2)" }} />
-                  <i className={`fas ${type === "new" ? "fa-user-plus" : "fa-user-check"}`} />
-                  {type === "new" ? "New Student" : "Current / Old Student"}
+              {(["new", "returning", "online"] as PhysicalStudentType[]).map((type) => (
+                <label key={type} style={{ flex: 1, display: "flex", alignItems: "center", gap: "7px", padding: "9px 12px", borderRadius: "8px", cursor: "pointer", border: studentType === type ? `1.5px solid ${type === "online" ? "#7c3aed" : "var(--teal2)"}` : "1px solid rgba(17,17,17,.15)", background: studentType === type ? (type === "online" ? "rgba(124,58,237,.06)" : "rgba(193,68,14,.06)") : "rgba(17,17,17,.04)", fontSize: ".82rem", fontWeight: studentType === type ? 700 : 400, color: studentType === type ? (type === "online" ? "#7c3aed" : "var(--teal2)") : "var(--muted)" }}>
+                  <input type="radio" name="edit_stype" value={type} checked={studentType === type} onChange={() => setStudentType(type)} style={{ accentColor: type === "online" ? "#7c3aed" : "var(--teal2)" }} />
+                  <i className={`fas ${type === "new" ? "fa-user-plus" : type === "returning" ? "fa-user-check" : "fa-wifi"}`} />
+                  {type === "new" ? "New Student" : type === "returning" ? "Current / Old" : "Online"}
                 </label>
               ))}
             </div>
             {studentType === "returning" && (
               <div style={{ marginTop: "7px", fontSize: ".73rem", color: "var(--muted)", background: "rgba(17,17,17,.03)", borderRadius: "6px", padding: "6px 10px", border: "1px solid rgba(17,17,17,.08)" }}>
                 <i className="fas fa-info-circle" style={{ marginRight: "5px" }} />No registration fee — student was enrolled before the system.
+              </div>
+            )}
+            {studentType === "online" && (
+              <div style={{ marginTop: "7px", fontSize: ".73rem", color: "#7c3aed", background: "rgba(124,58,237,.05)", borderRadius: "6px", padding: "6px 10px", border: "1px solid rgba(124,58,237,.2)" }}>
+                <i className="fas fa-wifi" style={{ marginRight: "5px" }} />Online student — attends remotely. Registration fee is optional.
               </div>
             )}
           </div>
@@ -374,7 +386,7 @@ function PaymentModal({ student, onClose, onDone }: {
       const res = await fetch("/api/receptionist/walk-in-payments", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: "physical_class",
+          type: student.type,
           customer_name:  student.name,
           customer_phone: student.phone,
           amount: paid,
@@ -406,8 +418,15 @@ function PaymentModal({ student, onClose, onDone }: {
         <div style={{ background: "rgba(17,17,17,.04)", borderRadius: "8px", padding: "8px 12px", marginBottom: "16px", fontSize: ".82rem", border: "1px solid rgba(17,17,17,.1)" }}>
           <div style={{ fontWeight: 700, color: "var(--dark)" }}>{student.name}</div>
           <div style={{ color: "var(--muted)", fontSize: ".75rem" }}>{student.class_name}</div>
-          {(student.total_due ?? 0) > 0 && (
+          {(student.course_fee_monthly ?? 0) > 0 && (
             <div style={{ marginTop: "6px", fontSize: ".75rem", color: "var(--muted)" }}>
+              Monthly fee: <strong style={{ color: "var(--teal2)" }}>
+                KES {(student.course_fee_monthly ?? 0).toLocaleString()}
+              </strong>
+            </div>
+          )}
+          {(student.total_due ?? 0) > 0 && student.total_paid < (student.total_due ?? 0) && (
+            <div style={{ marginTop: "4px", fontSize: ".75rem", color: "var(--muted)" }}>
               Outstanding: <strong style={{ color: "#d97706" }}>
                 KES {Math.max(0, (student.total_due ?? 0) - student.total_paid).toLocaleString()}
               </strong>
@@ -465,12 +484,110 @@ function PaymentModal({ student, onClose, onDone }: {
   );
 }
 
+// ─── Flag Modal ───────────────────────────────────────────────────────────────
+
+function FlagModal({ student, onClose, onDone }: {
+  student: Student;
+  onClose: () => void;
+  onDone:  () => void;
+}) {
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+  const [sent,    setSent]    = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!message.trim()) { setError("Please describe the correction needed."); return; }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/receptionist/student-flags", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payment_id: student.id, message: message.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to submit flag");
+      setSent(true);
+      onDone();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: "16px" }} onClick={onClose}>
+      <div className="card" style={{ maxWidth: "420px", width: "100%", padding: "24px", gap: 0 }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <h3 style={{ margin: 0, color: "#dc2626", display: "flex", alignItems: "center", gap: "8px" }}>
+            <i className="fas fa-flag" />Flag for Correction
+          </h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><i className="fas fa-times" /></button>
+        </div>
+
+        {sent ? (
+          <div style={{ background: "rgba(220,38,38,.07)", border: "1px solid rgba(220,38,38,.2)", borderRadius: "10px", padding: "18px", textAlign: "center" }}>
+            <i className="fas fa-check-circle" style={{ color: "#dc2626", fontSize: "1.4rem", marginBottom: "10px", display: "block" }} />
+            <div style={{ fontWeight: 700, color: "#dc2626", marginBottom: "4px" }}>Flag sent to Owner</div>
+            <div style={{ fontSize: ".78rem", color: "var(--muted)" }}>The owner will review and make corrections.</div>
+            <button onClick={onClose} className="btn-outline" style={{ marginTop: "14px", width: "100%" }}>Close</button>
+          </div>
+        ) : (
+          <>
+            <div style={{ background: "rgba(17,17,17,.04)", borderRadius: "8px", padding: "10px 12px", marginBottom: "16px", fontSize: ".82rem", border: "1px solid rgba(17,17,17,.1)" }}>
+              <div style={{ fontWeight: 700, color: "var(--dark)" }}>{student.name}</div>
+              <div style={{ color: "var(--muted)", fontSize: ".75rem" }}>{student.class_name} · {student.phone}</div>
+            </div>
+
+            <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {error && <div style={{ background: "rgba(220,38,38,.08)", border: "1px solid rgba(220,38,38,.25)", borderRadius: "7px", padding: "9px 12px", color: "#dc2626", fontSize: ".8rem" }}>{error}</div>}
+
+              <div>
+                <label style={lbl}>Correction needed *</label>
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  rows={4}
+                  placeholder="Describe what needs to be corrected — e.g. wrong class name, wrong category, duplicate entry, etc."
+                  required
+                  style={{ ...inp, resize: "vertical" }}
+                  autoFocus
+                />
+                <div style={{ fontSize: ".68rem", color: "var(--muted)", marginTop: "4px" }}>
+                  This message will be sent to the owner for review.
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{ flex: 1, padding: "9px 16px", borderRadius: "8px", border: "none", background: "#dc2626", color: "#fff", fontWeight: 700, fontSize: ".85rem", cursor: "pointer", opacity: loading ? .6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}
+                >
+                  {loading
+                    ? <><i className="fas fa-spinner fa-spin" />Sending…</>
+                    : <><i className="fas fa-flag" />Send Flag</>
+                  }
+                </button>
+                <button type="button" className="btn-outline" onClick={onClose} style={{ flex: 1 }}>Cancel</button>
+              </div>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Student Table ────────────────────────────────────────────────────────────
 
-function StudentTable({ students, onEdit, onPay }: {
+function StudentTable({ students, onEdit, onPay, onFlag }: {
   students: Student[];
   onEdit: (s: Student) => void;
   onPay:  (s: Student) => void;
+  onFlag: (s: Student) => void;
 }) {
   // Group by class for divider rows
   const grouped: Record<string, Student[]> = {};
@@ -535,7 +652,12 @@ function StudentTable({ students, onEdit, onPay }: {
                             {initials(s.name)}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 600, color: "var(--dark)", fontSize: ".85rem" }}>{s.name}</div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span style={{ fontWeight: 600, color: "var(--dark)", fontSize: ".85rem" }}>{s.name}</span>
+                            {s.student_type === "online" && (
+                              <span style={{ fontSize: ".55rem", fontWeight: 800, textTransform: "uppercase", background: "rgba(124,58,237,.12)", color: "#7c3aed", padding: "1px 5px", borderRadius: "4px", letterSpacing: ".04em" }}>Online</span>
+                            )}
+                          </div>
                             {cleanNotes(s.notes) && (
                               <div style={{ fontSize: ".68rem", color: "var(--muted)", fontStyle: "italic", maxWidth: "160px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={cleanNotes(s.notes)}>
                                 {cleanNotes(s.notes)}
@@ -585,6 +707,9 @@ function StudentTable({ students, onEdit, onPay }: {
                           <Link href={`/dashboard/receptionist/receipt/${s.id}`} className="act-btn" title="View Receipt">
                             <i className="fas fa-receipt" style={{ fontSize: ".7rem" }} />
                           </Link>
+                          <button onClick={() => onFlag(s)} className="act-btn" title="Flag for correction" style={{ color: "#dc2626", borderColor: "rgba(220,38,38,.2)" }}>
+                            <i className="fas fa-flag" style={{ fontSize: ".7rem" }} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -609,12 +734,13 @@ export default function StudentsPage() {
   const [showReg,    setShowReg]    = useState(false);
   const [editTarget, setEditTarget] = useState<Student | null>(null);
   const [payTarget,  setPayTarget]  = useState<Student | null>(null);
+  const [flagTarget, setFlagTarget] = useState<Student | null>(null);
 
   function load() {
     setLoading(true);
     fetch("/api/receptionist/walk-in-members")
       .then((r) => r.json())
-      .then((j) => setStudents((j.members ?? []).filter((m: any) => m.type === "physical_class")))
+      .then((j) => setStudents((j.members ?? []).filter((m: any) => m.type === "physical_class" || m.type === "online_class")))
       .finally(() => setLoading(false));
   }
 
@@ -625,12 +751,14 @@ export default function StudentsPage() {
     !q || s.name.toLowerCase().includes(q) || s.phone.includes(q) || s.class_name.toLowerCase().includes(q)
   );
 
-  const newStudents       = searched.filter((s) => s.student_type === "new"       || s.student_type === null);
+  const newStudents       = searched.filter((s) => s.student_type === "new" || s.student_type === null);
   const returningStudents = searched.filter((s) => s.student_type === "returning");
+  const onlineStudents    = searched.filter((s) => s.student_type === "online");
 
   const displayed =
     filter === "new"       ? newStudents :
     filter === "returning" ? returningStudents :
+    filter === "online"    ? onlineStudents :
     searched;
 
   return (
@@ -690,6 +818,27 @@ export default function StudentsPage() {
           </div>
         </button>
 
+        <button
+          onClick={() => setFilter((f) => f === "online" ? "all" : "online")}
+          style={{
+            flex: 1, minWidth: "220px", display: "flex", alignItems: "center", gap: "12px",
+            padding: "14px 18px", borderRadius: "10px", cursor: "pointer", textAlign: "left",
+            border: filter === "online" ? "2px solid #7c3aed" : "1px solid var(--border)",
+            background: filter === "online" ? "rgba(124,58,237,.06)" : "#fff",
+            transition: "all .15s",
+          }}
+        >
+          <div style={{ width: "34px", height: "34px", borderRadius: "8px", background: "rgba(124,58,237,.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <i className="fas fa-wifi" style={{ color: "#7c3aed", fontSize: ".9rem" }} />
+          </div>
+          <div>
+            <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--dark)", lineHeight: 1.1 }}>
+              {loading ? "—" : onlineStudents.length}
+            </div>
+            <div style={{ fontSize: ".72rem", color: "var(--muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".04em" }}>Online Students</div>
+          </div>
+        </button>
+
         {/* Search (now part of the row) */}
         <div style={{ flex: 2, minWidth: "300px", position: "relative" }}>
           <i className="fas fa-search" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "var(--muted)", fontSize: ".85rem", pointerEvents: "none" }} />
@@ -717,12 +866,13 @@ export default function StudentsPage() {
           </div>
         </div>
       ) : (
-        <StudentTable students={displayed} onEdit={setEditTarget} onPay={setPayTarget} />
+        <StudentTable students={displayed} onEdit={setEditTarget} onPay={setPayTarget} onFlag={setFlagTarget} />
       )}
 
       {showReg    && <RegisterModal onClose={() => setShowReg(false)}    onRegistered={load} />}
       {editTarget && <EditModal     student={editTarget} onClose={() => setEditTarget(null)} onSaved={load} />}
       {payTarget  && <PaymentModal  student={payTarget}  onClose={() => setPayTarget(null)}  onDone={load} />}
+      {flagTarget && <FlagModal     student={flagTarget} onClose={() => setFlagTarget(null)} onDone={() => setFlagTarget(null)} />}
     </div>
   );
 }

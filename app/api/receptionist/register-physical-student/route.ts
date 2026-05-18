@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       phone:               string;
       email?:              string;
       class_name:          string;
-      student_type?:       "new" | "returning";
+      student_type?:       "new" | "returning" | "online";
       course_fee_monthly?: number;
       registration_fee?:   number;
       total_due?:          number;
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
     const { data: payment, error: payError } = await admin
       .from("walk_in_payments")
       .insert({
-        type:            "physical_class",
+        type:            student_type === "online" ? "online_class" : "physical_class",
         customer_name:   full_name,
         customer_phone:  phone,
         customer_email:  email ?? null,

@@ -39,7 +39,7 @@ export default function ManagerStudentsPage() {
     setLoading(true);
     fetch("/api/receptionist/walk-in-members")
       .then((r) => r.json())
-      .then((j) => setStudents((j.members ?? []).filter((m: any) => m.type === "physical_class")))
+      .then((j) => setStudents((j.members ?? []).filter((m: any) => m.type === "physical_class" || m.type === "online_class")))
       .finally(() => setLoading(false));
   }
 

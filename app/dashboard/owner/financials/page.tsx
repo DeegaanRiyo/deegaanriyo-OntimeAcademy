@@ -14,21 +14,26 @@ function serviceClient() {
 const TYPE_LABELS: Record<string, string> = {
   membership:     "Membership",
   physical_class: "Physical Class",
+  online_class:   "Online Class",
   space_rental:   "Space Rental",
 };
 const TYPE_COLORS: Record<string, string> = {
   membership:     "var(--teal2)",
   physical_class: "var(--blue)",
+  online_class:   "#7c3aed",
   space_rental:   "var(--gold)",
 };
 const TYPE_BADGE: Record<string, string> = {
   membership:     "badge tl",
   physical_class: "badge bl",
+  online_class:   "badge pu",
   space_rental:   "badge gd",
 };
 const METHOD_LABELS: Record<string, string> = {
   cash:          "Cash",
+  mpesa:         "M-Pesa",
   bank_transfer: "Bank Transfer",
+  both:          "Cash + M-Pesa",
 };
 
 function fmtDate(iso: string | null | undefined) {

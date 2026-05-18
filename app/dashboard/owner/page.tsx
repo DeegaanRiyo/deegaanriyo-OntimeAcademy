@@ -13,16 +13,19 @@ function service() {
 const TYPE_LABELS: Record<string, string> = {
   membership:     "Membership",
   physical_class: "Physical Class",
+  online_class:   "Online Class",
   space_rental:   "Space Rental",
 };
 const TYPE_COLORS: Record<string, string> = {
   membership:     "var(--teal2)",
   physical_class: "#3b82f6",
+  online_class:   "#7c3aed",
   space_rental:   "var(--gold)",
 };
 const TYPE_BADGE: Record<string, string> = {
   membership:     "badge tl",
   physical_class: "badge bl",
+  online_class:   "badge pu",
   space_rental:   "badge gd",
 };
 const METHOD_LABELS: Record<string, string> = {
@@ -95,8 +98,8 @@ export default async function OwnerDashboardPage() {
     // Online students
     admin.from("profiles").select("id").eq("role", "student"),
 
-    // Physical students this month
-    admin.from("walk_in_payments").select("id").eq("type", "physical_class"),
+    // Physical + online students (walk-in class registrations)
+    admin.from("walk_in_payments").select("id").in("type", ["physical_class", "online_class"]),
 
     // Pending bookings
     admin.from("bookings").select("id").eq("status", "pending"),
@@ -119,19 +122,21 @@ export default async function OwnerDashboardPage() {
   const walkIns       = (walkInsRaw ?? []) as any[];
   const onlinePays    = (onlinePaysRaw ?? []) as any[];
 
-  const membershipRev = walkIns.filter((p) => p.type === "membership").reduce((s, p) => s + (p.amount ?? 0), 0);
-  const physClassRev  = walkIns.filter((p) => p.type === "physical_class").reduce((s, p) => s + (p.amount ?? 0), 0);
-  const spaceRentRev  = walkIns.filter((p) => p.type === "space_rental").reduce((s, p) => s + (p.amount ?? 0), 0);
-  const walkInTotal   = membershipRev + physClassRev + spaceRentRev;
+  const membershipRev   = walkIns.filter((p) => p.type === "membership").reduce((s, p) => s + (p.amount ?? 0), 0);
+  const physClassRev    = walkIns.filter((p) => p.type === "physical_class").reduce((s, p) => s + (p.amount ?? 0), 0);
+  const onlineClassRev  = walkIns.filter((p) => p.type === "online_class").reduce((s, p) => s + (p.amount ?? 0), 0);
+  const spaceRentRev    = walkIns.filter((p) => p.type === "space_rental").reduce((s, p) => s + (p.amount ?? 0), 0);
+  const walkInTotal     = membershipRev + physClassRev + onlineClassRev + spaceRentRev;
   const onlineTotal   = onlinePays.reduce((s, p: any) => s + (p.amount ?? 0), 0);
   const grandTotal    = walkInTotal + onlineTotal;
 
   // ── Revenue by category (for 4 KPI cards) ────────────────────────────────
   const categories = [
-    { label: "Membership",     amount: membershipRev, color: "var(--teal2)", icon: "fa-id-card",   count: walkIns.filter((p) => p.type === "membership").length     },
-    { label: "Physical Class", amount: physClassRev,  color: "#3b82f6",     icon: "fa-chalkboard-teacher", count: walkIns.filter((p) => p.type === "physical_class").length },
-    { label: "Space Rental",   amount: spaceRentRev,  color: "var(--gold)", icon: "fa-door-open",  count: walkIns.filter((p) => p.type === "space_rental").length    },
-    { label: "Online Courses", amount: onlineTotal,   color: "#8b5cf6",     icon: "fa-laptop",     count: onlinePays.length                                          },
+    { label: "Membership",     amount: membershipRev,  color: "var(--teal2)", icon: "fa-id-card",            count: walkIns.filter((p) => p.type === "membership").length      },
+    { label: "Physical Class", amount: physClassRev,   color: "#3b82f6",     icon: "fa-chalkboard-teacher",  count: walkIns.filter((p) => p.type === "physical_class").length  },
+    { label: "Online Class",   amount: onlineClassRev, color: "#7c3aed",     icon: "fa-wifi",                count: walkIns.filter((p) => p.type === "online_class").length    },
+    { label: "Space Rental",   amount: spaceRentRev,   color: "var(--gold)", icon: "fa-door-open",           count: walkIns.filter((p) => p.type === "space_rental").length    },
+    { label: "Online Courses", amount: onlineTotal,    color: "#8b5cf6",     icon: "fa-laptop",              count: onlinePays.length                                          },
   ];
 
   // ── Monthly trend (last 6 months) ────────────────────────────────────────

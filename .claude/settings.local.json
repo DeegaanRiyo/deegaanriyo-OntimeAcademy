@@ -10,7 +10,8 @@
       "Bash(npx tsc *)",
       "Read(//c/Users/hp/Desktop//**)",
       "Read(//c/Users/hp/Documents//**)",
-      "Read(//c/Users/hp//**)"
+      "Read(//c/Users/hp//**)",
+      "Bash(npm run *)"
     ]
   }
 }

@@ -42,7 +42,7 @@ export default function PhysicalStudentPaymentFields({
   mpesaRef, setMpesaRef,
 }: Props) {
   const monthly  = Number(courseMonthly) || 0;
-  const rFee     = studentType === "new" ? (Number(regFee) || 0) : 0;
+  const rFee     = (studentType === "new" || studentType === "online") ? (Number(regFee) || 0) : 0;
   const totalDue = monthly + rFee;
   const paid     = method === "both"
     ? (Number(cashAmount) || 0) + (Number(mpesaAmount) || 0)
@@ -61,10 +61,19 @@ export default function PhysicalStudentPaymentFields({
             <label style={lbl}>Monthly Course Fee (KES) *</label>
             <input type="number" min="1" value={courseMonthly} onChange={(e) => setCourseMonthly(e.target.value)} placeholder="e.g. 5000" required style={inp} />
           </div>
-          {studentType === "new" && (
+          {(studentType === "new" || studentType === "online") && (
             <div>
-              <label style={lbl}>Registration Fee (KES) *</label>
-              <input type="number" min="0" value={regFee} onChange={(e) => setRegFee(e.target.value)} placeholder="e.g. 2000" required style={inp} />
+              <label style={lbl}>
+                Registration Fee (KES){studentType === "new" ? " *" : ""}
+              </label>
+              <input
+                type="number" min="0"
+                value={regFee}
+                onChange={(e) => setRegFee(e.target.value)}
+                placeholder="e.g. 2000"
+                required={studentType === "new"}
+                style={inp}
+              />
             </div>
           )}
         </div>

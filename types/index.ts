@@ -122,5 +122,5 @@ export type Payment = {
 };
 
 // ─── Receptionist / Walk-in ───────────────────────────────────────────────────
-export type PhysicalStudentType = "new" | "returning";
+export type PhysicalStudentType = "new" | "returning" | "online";
 export type PhysicalStudentPayMethod = "cash" | "mpesa" | "both";

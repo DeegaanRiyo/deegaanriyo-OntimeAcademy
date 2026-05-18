@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       profession?:    string;
       membership_fee: number;
       amount:         number;
-      method:         "cash" | "bank_transfer";
+      method:         "cash" | "mpesa" | "bank_transfer";
       reference?:     string;
       notes?:         string;
     };

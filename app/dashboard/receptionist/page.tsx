@@ -71,11 +71,11 @@ export default async function ReceptionistDashboardPage() {
       .select("id")
       .eq("is_active", true),
 
-    // Student count — distinct phones in physical_class payments
+    // Student count — distinct phones in physical_class + online_class payments
     service
       .from("walk_in_payments")
       .select("customer_phone")
-      .eq("type", "physical_class"),
+      .in("type", ["physical_class", "online_class"]),
   ]);
 
   const todayBookings = todayRaw ?? [];

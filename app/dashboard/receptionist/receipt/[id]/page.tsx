@@ -14,12 +14,15 @@ function serviceClient() {
 const TYPE_LABELS: Record<string, string> = {
   membership:     "Co-working Membership",
   physical_class: "Physical Class",
+  online_class:   "Online Class",
   space_rental:   "Space Rental",
 };
 
 const METHOD_LABELS: Record<string, string> = {
-  cash:  "Cash",
-  mpesa: "M-Pesa",
+  cash:          "Cash",
+  mpesa:         "M-Pesa",
+  bank_transfer: "Bank Transfer",
+  both:          "Cash + M-Pesa",
 };
 
 function fmt(iso: string) {
