@@ -54,54 +54,54 @@ const METHOD_LABELS: Record<string, string> = {
 
 // Legacy — used by PaymentModal / FlagModal only
 const inp: React.CSSProperties = {
-  width: "100%", background: "rgba(17,17,17,.04)", border: "1px solid rgba(17,17,17,.15)",
-  borderRadius: "8px", padding: "9px 12px", color: "var(--dark)",
-  fontSize: ".85rem", outline: "none", boxSizing: "border-box",
+  width: "100%", background: "rgba(17,17,17,.03)", border: "1px solid rgba(17,17,17,.12)",
+  borderRadius: "6px", padding: "8px 10px", color: "var(--dark)",
+  fontSize: ".8rem", outline: "none", boxSizing: "border-box",
 };
 const lbl: React.CSSProperties = {
-  display: "block", fontSize: ".65rem", fontWeight: 700,
-  textTransform: "uppercase", letterSpacing: ".08em", color: "var(--muted)", marginBottom: "5px",
+  display: "block", fontSize: ".62rem", fontWeight: 700,
+  textTransform: "uppercase", letterSpacing: ".08em", color: "rgba(17,17,17,.4)", marginBottom: "4px",
 };
 
 // New fintech tokens
 const F_INP: React.CSSProperties = {
-  width: "100%", height: "36px", background: "#fff",
-  border: "1px solid rgba(17,17,17,.13)", borderRadius: "6px",
-  padding: "0 10px", color: "var(--dark)", fontSize: ".83rem",
-  outline: "none", boxSizing: "border-box", transition: "border-color .15s",
+  width: "100%", height: "34px", background: "#fff",
+  border: "1px solid rgba(17,17,17,.12)", borderRadius: "6px",
+  padding: "0 10px", color: "var(--dark)", fontSize: ".8rem",
+  outline: "none", boxSizing: "border-box", transition: "all .12s ease",
 };
 const F_LBL: React.CSSProperties = {
-  display: "block", fontSize: ".6rem", fontWeight: 700,
-  textTransform: "uppercase", letterSpacing: ".09em",
-  color: "rgba(17,17,17,.38)", marginBottom: "4px",
+  display: "block", fontSize: ".58rem", fontWeight: 700,
+  textTransform: "uppercase", letterSpacing: ".1em",
+  color: "rgba(17,17,17,.35)", marginBottom: "3px",
 };
 const TH: React.CSSProperties = {
-  padding: "7px 12px", textAlign: "left", fontSize: ".58rem",
-  fontWeight: 700, textTransform: "uppercase", letterSpacing: ".09em",
-  color: "rgba(17,17,17,.35)", whiteSpace: "nowrap", background: "rgba(17,17,17,.015)",
+  padding: "6px 12px", textAlign: "left", fontSize: ".55rem",
+  fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em",
+  color: "rgba(17,17,17,.32)", whiteSpace: "nowrap", background: "rgba(17,17,17,.015)",
 };
 const TD: React.CSSProperties = {
-  padding: "0 12px", height: "40px", verticalAlign: "middle",
-  fontSize: ".78rem", color: "var(--dark)",
+  padding: "0 12px", height: "36px", verticalAlign: "middle",
+  fontSize: ".75rem", color: "var(--dark)",
 };
 const TD_M: React.CSSProperties = {
-  padding: "0 12px", height: "40px", verticalAlign: "middle",
-  fontSize: ".75rem", color: "rgba(17,17,17,.48)",
+  padding: "0 12px", height: "36px", verticalAlign: "middle",
+  fontSize: ".72rem", color: "rgba(17,17,17,.45)",
 };
 const ACT_BTN: React.CSSProperties = {
-  width: "25px", height: "25px", display: "inline-flex", alignItems: "center",
-  justifyContent: "center", background: "rgba(17,17,17,.05)", border: "none",
-  borderRadius: "5px", cursor: "pointer", color: "rgba(17,17,17,.48)",
-  textDecoration: "none", fontSize: ".62rem",
+  width: "24px", height: "24px", display: "inline-flex", alignItems: "center",
+  justifyContent: "center", background: "transparent", border: "none",
+  borderRadius: "4px", cursor: "pointer", color: "rgba(17,17,17,.35)",
+  textDecoration: "none", fontSize: ".6rem", transition: "all .1s",
 };
 
 // ─── Section divider for modals ────────────────────────────────────────────────
 
 function SectionDivider({ label }: { label: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "9px", margin: "2px 0 10px" }}>
-      <span style={{ fontSize: ".58rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".1em", color: "rgba(17,17,17,.3)", whiteSpace: "nowrap" }}>{label}</span>
-      <div style={{ flex: 1, height: "1px", background: "rgba(17,17,17,.07)" }} />
+    <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "4px 0 8px" }}>
+      <span style={{ fontSize: ".54rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".12em", color: "rgba(17,17,17,.25)", whiteSpace: "nowrap" }}>{label}</span>
+      <div style={{ flex: 1, height: "1px", background: "rgba(17,17,17,.05)" }} />
     </div>
   );
 }
@@ -118,7 +118,7 @@ function SegmentedControl({ value, onChange }: {
     { v: "online",    label: "Zoom Class",    icon: "fa-video"      },
   ];
   return (
-    <div style={{ display: "flex", background: "rgba(17,17,17,.06)", borderRadius: "8px", padding: "3px", gap: "2px" }}>
+    <div style={{ display: "flex", background: "rgba(17,17,17,.04)", borderRadius: "6px", padding: "2px", gap: "1px" }}>
       {items.map(({ v, label, icon }) => {
         const active = value === v;
         const isZoom = v === "online";
@@ -126,16 +126,16 @@ function SegmentedControl({ value, onChange }: {
           <button
             key={v} type="button" onClick={() => onChange(v)}
             style={{
-              flex: 1, height: "34px", display: "flex", alignItems: "center",
-              justifyContent: "center", gap: "6px", borderRadius: "6px", border: "none",
-              cursor: "pointer", fontSize: ".76rem",
-              fontWeight: active ? 700 : 500, transition: "all .14s",
+              flex: 1, height: "30px", display: "flex", alignItems: "center",
+              justifyContent: "center", gap: "5px", borderRadius: "5px", border: "none",
+              cursor: "pointer", fontSize: ".72rem",
+              fontWeight: active ? 700 : 500, transition: "all .12s",
               background: active ? "#fff" : "transparent",
-              color: active ? (isZoom ? "#7c3aed" : "#E8490F") : "rgba(17,17,17,.42)",
-              boxShadow: active ? "0 1px 4px rgba(0,0,0,.1)" : "none",
+              color: active ? (isZoom ? "#7c3aed" : "#E8490F") : "rgba(17,17,17,.4)",
+              boxShadow: active ? "0 1px 3px rgba(0,0,0,.08)" : "none",
             }}
           >
-            <i className={`fas ${icon}`} style={{ fontSize: ".65rem" }} />
+            <i className={`fas ${icon}`} style={{ fontSize: ".6rem" }} />
             {label}
           </button>
         );
@@ -156,23 +156,23 @@ function MethodToggle({ value, onChange }: {
     { v: "both",  label: "Both",   icon: "fa-layer-group"     },
   ];
   return (
-    <div style={{ display: "flex", gap: "6px" }}>
+    <div style={{ display: "flex", gap: "5px" }}>
       {methods.map(({ v, label, icon }) => {
         const active = value === v;
         return (
           <button
             key={v} type="button" onClick={() => onChange(v)}
             style={{
-              padding: "6px 16px", borderRadius: "100px",
-              border: active ? "none" : "1px solid rgba(17,17,17,.14)",
+              flex: 1, height: "32px", borderRadius: "100px",
+              border: active ? "none" : "1px solid rgba(17,17,17,.12)",
               background: active ? "#E8490F" : "transparent",
-              color: active ? "#fff" : "rgba(17,17,17,.48)",
-              fontWeight: active ? 700 : 500, fontSize: ".76rem",
-              cursor: "pointer", transition: "all .14s",
-              display: "flex", alignItems: "center", gap: "5px",
+              color: active ? "#fff" : "rgba(17,17,17,.45)",
+              fontWeight: active ? 700 : 500, fontSize: ".74rem",
+              cursor: "pointer", transition: "all .12s",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "5px",
             }}
           >
-            <i className={`fas ${icon}`} style={{ fontSize: ".62rem" }} />
+            <i className={`fas ${icon}`} style={{ fontSize: ".6rem" }} />
             {label}
           </button>
         );
@@ -195,36 +195,36 @@ function FeeCard({
 }) {
   const showReg = studentType === "new" || studentType === "online";
   return (
-    <div style={{ border: "1px solid rgba(17,17,17,.1)", borderRadius: "8px", overflow: "hidden" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 14px", borderBottom: "1px solid rgba(17,17,17,.07)" }}>
-        <label style={{ ...F_LBL, marginBottom: 0 }}>Monthly Course Fee (KES) *</label>
+    <div style={{ border: "1px solid rgba(17,17,17,.08)", borderRadius: "8px", overflow: "hidden", background: "rgba(17,17,17,.01)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", borderBottom: "1px solid rgba(17,17,17,.06)" }}>
+        <label style={{ ...F_LBL, marginBottom: 0 }}>Monthly Fee (KES)</label>
         <input
           type="number" min="1" value={courseMonthly}
           onChange={(e) => setCourseMonthly(e.target.value)}
           placeholder="0" required
-          style={{ ...F_INP, width: "130px", textAlign: "right" }}
+          style={{ ...F_INP, width: "110px", textAlign: "right", height: "30px", fontSize: ".78rem" }}
         />
       </div>
       {showReg && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 14px", borderBottom: "1px solid rgba(17,17,17,.07)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", borderBottom: "1px solid rgba(17,17,17,.06)" }}>
           <label style={{ ...F_LBL, marginBottom: 0 }}>
-            Registration Fee (KES){studentType === "new" ? " *" : " (optional)"}
+            Registration Fee (KES)
           </label>
           <input
             type="number" min="0" value={regFee}
             onChange={(e) => setRegFee(e.target.value)}
             placeholder="0" required={studentType === "new"}
-            style={{ ...F_INP, width: "130px", textAlign: "right" }}
+            style={{ ...F_INP, width: "110px", textAlign: "right", height: "30px", fontSize: ".78rem" }}
           />
         </div>
       )}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "9px 14px",
-        background: totalDue > 0 ? "rgba(232,73,15,.04)" : "rgba(17,17,17,.02)",
+        padding: "10px 14px",
+        background: totalDue > 0 ? "rgba(232,73,15,.04)" : "transparent",
       }}>
-        <span style={{ fontSize: ".76rem", fontWeight: 700, color: "var(--dark)" }}>Total Due</span>
-        <span style={{ fontSize: ".9rem", fontWeight: 800, color: totalDue > 0 ? "#E8490F" : "rgba(17,17,17,.28)" }}>
+        <span style={{ fontSize: ".74rem", fontWeight: 700, color: "var(--dark)" }}>Total Due</span>
+        <span style={{ fontSize: ".88rem", fontWeight: 800, color: totalDue > 0 ? "#E8490F" : "rgba(17,17,17,.2)" }}>
           {totalDue > 0 ? `KES ${totalDue.toLocaleString()}` : "—"}
         </span>
       </div>
@@ -241,18 +241,18 @@ function BalanceBar({ totalDue, amtPaid }: { totalDue: number; amtPaid: number }
   const isOverpaid  = amtPaid > totalDue;
   return (
     <div style={{
-      padding: "8px 12px", borderRadius: "6px",
-      background: isOverpaid ? "rgba(59,130,246,.06)" : isPartial ? "rgba(245,158,11,.06)" : "rgba(22,163,74,.06)",
-      border: `1px solid ${isOverpaid ? "rgba(59,130,246,.18)" : isPartial ? "rgba(245,158,11,.18)" : "rgba(22,163,74,.18)"}`,
-      display: "flex", alignItems: "center", gap: "7px", fontSize: ".74rem",
+      padding: "7px 10px", borderRadius: "6px",
+      background: isOverpaid ? "rgba(59,130,246,.05)" : isPartial ? "rgba(217,119,6,.05)" : "rgba(22,163,74,.05)",
+      border: `1px solid ${isOverpaid ? "rgba(59,130,246,.15)" : isPartial ? "rgba(217,119,6,.15)" : "rgba(22,163,74,.15)"}`,
+      display: "flex", alignItems: "center", gap: "6px", fontSize: ".72rem",
     }}>
       <i
         className={`fas ${isOverpaid ? "fa-arrow-up" : isPartial ? "fa-clock" : "fa-check-circle"}`}
-        style={{ color: isOverpaid ? "#3b82f6" : isPartial ? "#d97706" : "#16a34a", fontSize: ".7rem" }}
+        style={{ color: isOverpaid ? "#3b82f6" : isPartial ? "#d97706" : "#16a34a", fontSize: ".65rem" }}
       />
-      {isPartial  && <><strong style={{ color: "#d97706" }}>Partial</strong><span style={{ color: "rgba(17,17,17,.45)" }}> · KES {outstanding.toLocaleString()} outstanding of KES {totalDue.toLocaleString()}</span></>}
-      {!isPartial && !isOverpaid && <strong style={{ color: "#16a34a" }}>Full payment · KES {totalDue.toLocaleString()} settled</strong>}
-      {isOverpaid && <><strong style={{ color: "#3b82f6" }}>Overpaid</strong><span style={{ color: "rgba(17,17,17,.45)" }}> · KES {(amtPaid - totalDue).toLocaleString()} over</span></>}
+      {isPartial  && <><strong style={{ color: "#d97706" }}>Partial</strong><span style={{ color: "rgba(17,17,17,.4)" }}> · KES {outstanding.toLocaleString()} outstanding</span></>}
+      {!isPartial && !isOverpaid && <strong style={{ color: "#16a34a" }}>Full payment · KES {totalDue.toLocaleString()}</strong>}
+      {isOverpaid && <><strong style={{ color: "#3b82f6" }}>Overpaid</strong><span style={{ color: "rgba(17,17,17,.4)" }}> · KES {(amtPaid - totalDue).toLocaleString()} over</span></>}
     </div>
   );
 }
@@ -318,151 +318,161 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: "16px" }} onClick={onClose}>
-      <div style={{ maxWidth: "640px", width: "100%", maxHeight: "94vh", overflowY: "auto", background: "#fff", borderRadius: "14px", boxShadow: "0 24px 60px rgba(0,0,0,.18)" }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ maxWidth: "560px", width: "100%", maxHeight: "94vh", overflowY: "auto", background: "#fff", borderRadius: "12px", boxShadow: "0 20px 50px rgba(0,0,0,.15)" }} onClick={(e) => e.stopPropagation()}>
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 24px", borderBottom: "1px solid rgba(17,17,17,.07)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(17,17,17,.06)" }}>
           <div>
-            <div style={{ fontWeight: 800, fontSize: ".98rem", color: "var(--dark)", letterSpacing: "-.01em" }}>Register Student</div>
-            <div style={{ fontSize: ".7rem", color: "rgba(17,17,17,.38)", marginTop: "2px" }}>Physical class student records and payments</div>
+            <div style={{ fontWeight: 800, fontSize: ".92rem", color: "var(--dark)" }}>Register Student</div>
+            <div style={{ fontSize: ".68rem", color: "rgba(17,17,17,.35)", marginTop: "1px" }}>Physical class records & payments</div>
           </div>
-          <button onClick={onClose} style={{ width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(17,17,17,.06)", border: "none", borderRadius: "6px", cursor: "pointer", color: "rgba(17,17,17,.45)", fontSize: ".8rem" }}>
+          <button onClick={onClose} style={{ width: "26px", height: "26px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(17,17,17,.05)", border: "none", borderRadius: "5px", cursor: "pointer", color: "rgba(17,17,17,.4)", fontSize: ".75rem" }}>
             <i className="fas fa-times" />
           </button>
         </div>
 
         {success ? (
           <div style={{ padding: "40px 24px", textAlign: "center" }}>
-            <div style={{ width: "52px", height: "52px", borderRadius: "50%", background: "rgba(22,163,74,.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-              <i className="fas fa-check" style={{ color: "#16a34a", fontSize: "1.2rem" }} />
+            <div style={{ width: "48px", height: "48px", borderRadius: "50%", background: "rgba(22,163,74,.08)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+              <i className="fas fa-check" style={{ color: "#16a34a", fontSize: "1.1rem" }} />
             </div>
-            <div style={{ fontWeight: 800, fontSize: "1rem", color: "var(--dark)", marginBottom: "4px" }}>{success.name} registered</div>
-            <div style={{ fontSize: ".78rem", color: "rgba(17,17,17,.42)", marginBottom: "24px" }}>Class: {success.class_name}</div>
-            <div style={{ display: "flex", gap: "10px" }}>
-              <Link href={`/dashboard/receptionist/receipt/${success.payment_id}`} style={{ flex: 1, height: "42px", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: "#E8490F", color: "#fff", borderRadius: "8px", textDecoration: "none", fontWeight: 700, fontSize: ".84rem" }}>
-                <i className="fas fa-receipt" />Print Receipt
+            <div style={{ fontWeight: 800, fontSize: ".95rem", color: "var(--dark)", marginBottom: "3px" }}>{success.name} registered</div>
+            <div style={{ fontSize: ".75rem", color: "rgba(17,17,17,.4)", marginBottom: "24px" }}>Class: {success.class_name}</div>
+            <div style={{ display: "flex", gap: "10px", maxWidth: "340px", margin: "0 auto" }}>
+              <Link href={`/dashboard/receptionist/receipt/${success.payment_id}`} style={{ flex: 1, height: "40px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "#E8490F", color: "#fff", borderRadius: "7px", textDecoration: "none", fontWeight: 700, fontSize: ".82rem" }}>
+                <i className="fas fa-receipt" />Receipt
               </Link>
-              <button onClick={() => setSuccess(null)} style={{ flex: 1, height: "42px", background: "rgba(17,17,17,.06)", border: "none", borderRadius: "8px", fontWeight: 700, fontSize: ".84rem", color: "var(--dark)", cursor: "pointer" }}>
-                Register Another
+              <button onClick={() => setSuccess(null)} style={{ flex: 1, height: "40px", background: "rgba(17,17,17,.05)", border: "none", borderRadius: "7px", fontWeight: 700, fontSize: ".82rem", color: "var(--dark)", cursor: "pointer" }}>
+                Add Another
               </button>
             </div>
           </div>
         ) : (
-          <form onSubmit={submit} style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "20px" }}>
+          <form onSubmit={submit} style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: "18px" }}>
 
             {error && (
-              <div style={{ background: "rgba(220,38,38,.06)", border: "1px solid rgba(220,38,38,.18)", borderRadius: "7px", padding: "9px 13px", color: "#dc2626", fontSize: ".78rem", display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ background: "rgba(220,38,38,.05)", border: "1px solid rgba(220,38,38,.15)", borderRadius: "6px", padding: "8px 12px", color: "#dc2626", fontSize: ".75rem", display: "flex", alignItems: "center", gap: "7px" }}>
                 <i className="fas fa-exclamation-circle" style={{ flexShrink: 0 }} />{error}
               </div>
             )}
 
             {/* Category */}
             <div>
-              <label style={{ ...F_LBL, marginBottom: "7px" }}>Student Category *</label>
+              <label style={F_LBL}>Student Category *</label>
               <SegmentedControl value={studentType} onChange={setStudentType} />
               {studentType === "returning" && (
-                <div style={{ marginTop: "7px", fontSize: ".71rem", color: "rgba(17,17,17,.42)", display: "flex", alignItems: "center", gap: "5px" }}>
-                  <i className="fas fa-info-circle" style={{ flexShrink: 0 }} />Student was enrolled before the system — no registration fee applies.
-                </div>
-              )}
-              {studentType === "online" && (
-                <div style={{ marginTop: "7px", fontSize: ".71rem", color: "#7c3aed", display: "flex", alignItems: "center", gap: "5px" }}>
-                  <i className="fas fa-video" style={{ flexShrink: 0 }} />Zoom class student — attends live sessions remotely. Registration fee is optional.
+                <div style={{ marginTop: "6px", fontSize: ".68rem", color: "rgba(17,17,17,.38)", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <i className="fas fa-info-circle" />Existing student — no registration fee applies.
                 </div>
               )}
             </div>
 
             {/* Student info */}
             <div>
-              <SectionDivider label="Student Info" />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <div><label style={F_LBL}>Full Name *</label><input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Ahmed Hassan" required style={F_INP} /></div>
-                <div><label style={F_LBL}>Phone *</label><input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" required style={F_INP} /></div>
-                <div><label style={F_LBL}>Email</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ahmed@email.com" style={F_INP} /></div>
-                <div><label style={F_LBL}>Class / Course *</label><input value={className} onChange={(e) => setClassName(e.target.value)} placeholder="e.g. Python Bootcamp" required style={F_INP} /></div>
-                <div><label style={F_LBL}>Date Joined *</label><input type="date" value={joinedAt} onChange={(e) => setJoinedAt(e.target.value)} required style={F_INP} /></div>
+              <SectionDivider label="Student Details" />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <div style={{ gridColumn: "span 2" }}>
+                  <label style={F_LBL}>Full Name *</label>
+                  <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="e.g. Ahmed Hassan" required style={F_INP} />
+                </div>
+                <div>
+                  <label style={F_LBL}>Phone Number *</label>
+                  <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" required style={F_INP} />
+                </div>
+                <div>
+                  <label style={F_LBL}>Email Address</label>
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ahmed@email.com" style={F_INP} />
+                </div>
+                <div style={{ gridColumn: "span 2" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "12px" }}>
+                    <div>
+                      <label style={F_LBL}>Assigned Class *</label>
+                      <input value={className} onChange={(e) => setClassName(e.target.value)} placeholder="e.g. Python Bootcamp" required style={F_INP} />
+                    </div>
+                    <div>
+                      <label style={F_LBL}>Date Joined *</label>
+                      <input type="date" value={joinedAt} onChange={(e) => setJoinedAt(e.target.value)} required style={F_INP} />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Fee Breakdown */}
-            <div>
-              <SectionDivider label="Fee Breakdown" />
-              <FeeCard
-                studentType={studentType}
-                courseMonthly={courseMonthly} setCourseMonthly={setCourseMonthly}
-                regFee={regFee} setRegFee={setRegFee}
-                totalDue={totalDue}
-              />
-            </div>
-
-            {/* Payment */}
-            <div>
-              <SectionDivider label="Payment" />
-              <div style={{ marginBottom: "12px" }}>
-                <label style={{ ...F_LBL, marginBottom: "7px" }}>Payment Method *</label>
-                <MethodToggle value={method} onChange={setMethod} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px", alignItems: "start" }}>
+              <div>
+                <SectionDivider label="Fee Structure" />
+                <FeeCard
+                  studentType={studentType}
+                  courseMonthly={courseMonthly} setCourseMonthly={setCourseMonthly}
+                  regFee={regFee} setRegFee={setRegFee}
+                  totalDue={totalDue}
+                />
               </div>
-
-              {method === "cash" && (
-                <div><label style={F_LBL}>Amount Paid — Cash (KES) *</label>
-                  <input type="number" min="1" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder="0" required style={F_INP} />
+              <div>
+                <SectionDivider label="Payment" />
+                <div style={{ marginBottom: "10px" }}>
+                  <label style={F_LBL}>Payment Method *</label>
+                  <MethodToggle value={method} onChange={setMethod} />
                 </div>
-              )}
-              {method === "mpesa" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                  <div><label style={F_LBL}>Amount Paid — M-Pesa (KES) *</label>
+
+                {method === "cash" && (
+                  <div><label style={F_LBL}>Cash Amount (KES) *</label>
                     <input type="number" min="1" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder="0" required style={F_INP} />
                   </div>
-                  <div><label style={F_LBL}>M-Pesa Reference</label>
-                    <input value={mpesaRef} onChange={(e) => setMpesaRef(e.target.value)} placeholder="QA12BCD3E4" style={F_INP} />
-                  </div>
-                </div>
-              )}
-              {method === "both" && (
-                <div style={{ border: "1px solid rgba(17,17,17,.09)", borderRadius: "8px", padding: "12px", background: "rgba(17,17,17,.01)" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
-                    <div><label style={F_LBL}>Cash (KES)</label>
-                      <input type="number" min="0" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} placeholder="0" style={F_INP} />
-                    </div>
-                    <div><label style={F_LBL}>M-Pesa (KES)</label>
-                      <input type="number" min="0" value={mpesaAmount} onChange={(e) => setMpesaAmount(e.target.value)} placeholder="0" style={F_INP} />
+                )}
+                {method === "mpesa" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <div><label style={F_LBL}>M-Pesa Amount (KES) *</label>
+                      <input type="number" min="1" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder="0" required style={F_INP} />
                     </div>
                     <div><label style={F_LBL}>M-Pesa Reference</label>
                       <input value={mpesaRef} onChange={(e) => setMpesaRef(e.target.value)} placeholder="QA12BCD3E4" style={F_INP} />
                     </div>
                   </div>
-                  {amtPaid > 0 && (
-                    <div style={{ marginTop: "10px", textAlign: "right", fontSize: ".76rem", color: "rgba(17,17,17,.45)" }}>
-                      Total: <strong style={{ color: "#E8490F" }}>KES {amtPaid.toLocaleString()}</strong>
+                )}
+                {method === "both" && (
+                  <div style={{ border: "1px solid rgba(17,17,17,.06)", borderRadius: "8px", padding: "10px", background: "rgba(17,17,17,.01)" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                        <div><label style={F_LBL}>Cash</label>
+                          <input type="number" min="0" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} placeholder="0" style={F_INP} />
+                        </div>
+                        <div><label style={F_LBL}>M-Pesa</label>
+                          <input type="number" min="0" value={mpesaAmount} onChange={(e) => setMpesaAmount(e.target.value)} placeholder="0" style={F_INP} />
+                        </div>
+                      </div>
+                      <div><label style={F_LBL}>Reference</label>
+                        <input value={mpesaRef} onChange={(e) => setMpesaRef(e.target.value)} placeholder="QA12..." style={F_INP} />
+                      </div>
                     </div>
-                  )}
-                </div>
-              )}
-
-              {amtPaid > 0 && totalDue > 0 && (
-                <div style={{ marginTop: "10px" }}>
-                  <BalanceBar totalDue={totalDue} amtPaid={amtPaid} />
-                </div>
-              )}
+                  </div>
+                )}
+                {amtPaid > 0 && totalDue > 0 && (
+                  <div style={{ marginTop: "10px" }}>
+                    <BalanceBar totalDue={totalDue} amtPaid={amtPaid} />
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Notes */}
             <div>
-              <label style={F_LBL}>Notes (optional)</label>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Any additional notes…"
-                style={{ ...F_INP, height: "auto", padding: "8px 10px", resize: "vertical", lineHeight: "1.5" }} />
+              <label style={F_LBL}>Additional Notes (optional)</label>
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={1} placeholder="e.g. Part payment agreed…"
+                style={{ ...F_INP, height: "auto", padding: "6px 10px", resize: "vertical", fontSize: ".75rem" }} />
             </div>
 
             {/* CTA */}
             <button type="submit" disabled={loading} style={{
-              width: "100%", height: "44px", background: loading ? "rgba(232,73,15,.55)" : "#E8490F",
-              color: "#fff", border: "none", borderRadius: "8px", fontWeight: 800, fontSize: ".88rem",
+              width: "100%", height: "40px", background: loading ? "rgba(232,73,15,.5)" : "#E8490F",
+              color: "#fff", border: "none", borderRadius: "8px", fontWeight: 800, fontSize: ".85rem",
               cursor: loading ? "not-allowed" : "pointer", display: "flex", alignItems: "center",
-              justifyContent: "center", gap: "8px", letterSpacing: "-.01em", transition: "background .15s",
+              justifyContent: "center", gap: "7px", transition: "all .15s",
             }}>
               {loading
-                ? <><i className="fas fa-spinner fa-spin" />Registering…</>
-                : <><i className="fas fa-user-graduate" />Register Student{amtPaid > 0 ? ` · KES ${amtPaid.toLocaleString()} paid` : ""}</>
+                ? <><i className="fas fa-spinner fa-spin" />Processing…</>
+                : <><i className="fas fa-user-graduate" />Register Student {amtPaid > 0 && `· KES ${amtPaid.toLocaleString()}`}</>
               }
             </button>
           </form>
@@ -536,135 +546,135 @@ function EditModal({ student, onClose, onSaved }: { student: Student; onClose: (
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: "16px" }} onClick={onClose}>
-      <div style={{ maxWidth: "640px", width: "100%", maxHeight: "94vh", overflowY: "auto", background: "#fff", borderRadius: "14px", boxShadow: "0 24px 60px rgba(0,0,0,.18)" }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ maxWidth: "560px", width: "100%", maxHeight: "94vh", overflowY: "auto", background: "#fff", borderRadius: "12px", boxShadow: "0 20px 50px rgba(0,0,0,.15)" }} onClick={(e) => e.stopPropagation()}>
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 24px", borderBottom: "1px solid rgba(17,17,17,.07)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(17,17,17,.06)" }}>
           <div>
-            <div style={{ fontWeight: 800, fontSize: ".98rem", color: "var(--dark)", letterSpacing: "-.01em" }}>Edit Student Record</div>
-            <div style={{ fontSize: ".7rem", color: "rgba(17,17,17,.38)", marginTop: "2px" }}>{student.name} · {student.class_name}</div>
+            <div style={{ fontWeight: 800, fontSize: ".92rem", color: "var(--dark)" }}>Edit Student Record</div>
+            <div style={{ fontSize: ".68rem", color: "rgba(17,17,17,.35)", marginTop: "1px" }}>{student.name} · {student.class_name}</div>
           </div>
-          <button onClick={onClose} style={{ width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(17,17,17,.06)", border: "none", borderRadius: "6px", cursor: "pointer", color: "rgba(17,17,17,.45)", fontSize: ".8rem" }}>
+          <button onClick={onClose} style={{ width: "26px", height: "26px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(17,17,17,.05)", border: "none", borderRadius: "5px", cursor: "pointer", color: "rgba(17,17,17,.4)", fontSize: ".75rem" }}>
             <i className="fas fa-times" />
           </button>
         </div>
 
-        <form onSubmit={save} style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "20px" }}>
+        <form onSubmit={save} style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: "18px" }}>
           {error && (
-            <div style={{ background: "rgba(220,38,38,.06)", border: "1px solid rgba(220,38,38,.18)", borderRadius: "7px", padding: "9px 13px", color: "#dc2626", fontSize: ".78rem", display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{ background: "rgba(220,38,38,.05)", border: "1px solid rgba(220,38,38,.15)", borderRadius: "6px", padding: "8px 12px", color: "#dc2626", fontSize: ".75rem", display: "flex", alignItems: "center", gap: "7px" }}>
               <i className="fas fa-exclamation-circle" style={{ flexShrink: 0 }} />{error}
             </div>
           )}
 
           {/* Category */}
           <div>
-            <label style={{ ...F_LBL, marginBottom: "7px" }}>Student Category *</label>
+            <label style={F_LBL}>Student Category *</label>
             <SegmentedControl value={studentType} onChange={setStudentType} />
-            {studentType === "returning" && (
-              <div style={{ marginTop: "7px", fontSize: ".71rem", color: "rgba(17,17,17,.42)", display: "flex", alignItems: "center", gap: "5px" }}>
-                <i className="fas fa-info-circle" style={{ flexShrink: 0 }} />No registration fee — student was enrolled before the system.
-              </div>
-            )}
-            {studentType === "online" && (
-              <div style={{ marginTop: "7px", fontSize: ".71rem", color: "#7c3aed", display: "flex", alignItems: "center", gap: "5px" }}>
-                <i className="fas fa-video" style={{ flexShrink: 0 }} />Zoom class student — attends live sessions remotely. Registration fee is optional.
-              </div>
-            )}
           </div>
 
           {/* Student info */}
           <div>
-            <SectionDivider label="Student Info" />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-              <div><label style={F_LBL}>Full Name *</label><input value={fullName} onChange={(e) => setFullName(e.target.value)} required style={F_INP} /></div>
-              <div><label style={F_LBL}>Phone *</label><input value={phone} onChange={(e) => setPhone(e.target.value)} required style={F_INP} /></div>
-              <div><label style={F_LBL}>Email</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={F_INP} /></div>
-              <div><label style={F_LBL}>Class / Course *</label><input value={className} onChange={(e) => setClassName(e.target.value)} required style={F_INP} /></div>
-              <div><label style={F_LBL}>Date Joined *</label><input type="date" value={joinedAt} onChange={(e) => setJoinedAt(e.target.value)} required style={F_INP} /></div>
+            <SectionDivider label="Student Details" />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <div style={{ gridColumn: "span 2" }}>
+                <label style={F_LBL}>Full Name *</label>
+                <input value={fullName} onChange={(e) => setFullName(e.target.value)} required style={F_INP} />
+              </div>
+              <div>
+                <label style={F_LBL}>Phone *</label>
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} required style={F_INP} />
+              </div>
+              <div>
+                <label style={F_LBL}>Email</label>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={F_INP} />
+              </div>
+              <div>
+                <label style={F_LBL}>Assigned Class *</label>
+                <input value={className} onChange={(e) => setClassName(e.target.value)} required style={F_INP} />
+              </div>
+              <div>
+                <label style={F_LBL}>Date Joined *</label>
+                <input type="date" value={joinedAt} onChange={(e) => setJoinedAt(e.target.value)} required style={F_INP} />
+              </div>
             </div>
           </div>
 
           {/* Fee Breakdown */}
-          <div>
-            <SectionDivider label="Fee Breakdown" />
-            <FeeCard
-              studentType={studentType}
-              courseMonthly={courseMonthly} setCourseMonthly={setCourseMonthly}
-              regFee={regFee} setRegFee={setRegFee}
-              totalDue={totalDue}
-            />
-          </div>
-
-          {/* Payment */}
-          <div>
-            <SectionDivider label="Payment" />
-            <div style={{ marginBottom: "12px" }}>
-              <label style={{ ...F_LBL, marginBottom: "7px" }}>Payment Method *</label>
-              <MethodToggle value={method} onChange={setMethod} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px", alignItems: "start" }}>
+            <div>
+              <SectionDivider label="Fee Structure" />
+              <FeeCard
+                studentType={studentType}
+                courseMonthly={courseMonthly} setCourseMonthly={setCourseMonthly}
+                regFee={regFee} setRegFee={setRegFee}
+                totalDue={totalDue}
+              />
             </div>
-
-            {method === "cash" && (
-              <div><label style={F_LBL}>Amount Paid — Cash (KES) *</label>
-                <input type="number" min="1" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} required style={F_INP} />
+            <div>
+              <SectionDivider label="Payment" />
+              <div style={{ marginBottom: "10px" }}>
+                <label style={F_LBL}>Payment Method *</label>
+                <MethodToggle value={method} onChange={setMethod} />
               </div>
-            )}
-            {method === "mpesa" && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <div><label style={F_LBL}>Amount Paid — M-Pesa (KES) *</label>
+
+              {method === "cash" && (
+                <div><label style={F_LBL}>Amount (KES) *</label>
                   <input type="number" min="1" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} required style={F_INP} />
                 </div>
-                <div><label style={F_LBL}>M-Pesa Reference</label>
-                  <input value={mpesaRef} onChange={(e) => setMpesaRef(e.target.value)} placeholder="QA12BCD3E4" style={F_INP} />
-                </div>
-              </div>
-            )}
-            {method === "both" && (
-              <div style={{ border: "1px solid rgba(17,17,17,.09)", borderRadius: "8px", padding: "12px", background: "rgba(17,17,17,.01)" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
-                  <div><label style={F_LBL}>Cash (KES)</label>
-                    <input type="number" min="0" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} style={F_INP} />
-                  </div>
-                  <div><label style={F_LBL}>M-Pesa (KES)</label>
-                    <input type="number" min="0" value={mpesaAmount} onChange={(e) => setMpesaAmount(e.target.value)} style={F_INP} />
+              )}
+              {method === "mpesa" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div><label style={F_LBL}>Amount (KES) *</label>
+                    <input type="number" min="1" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} required style={F_INP} />
                   </div>
                   <div><label style={F_LBL}>M-Pesa Reference</label>
                     <input value={mpesaRef} onChange={(e) => setMpesaRef(e.target.value)} placeholder="QA12BCD3E4" style={F_INP} />
                   </div>
                 </div>
-                {amtPaid > 0 && (
-                  <div style={{ marginTop: "10px", textAlign: "right", fontSize: ".76rem", color: "rgba(17,17,17,.45)" }}>
-                    Total: <strong style={{ color: "#E8490F" }}>KES {amtPaid.toLocaleString()}</strong>
+              )}
+              {method === "both" && (
+                <div style={{ border: "1px solid rgba(17,17,17,.06)", borderRadius: "8px", padding: "10px", background: "rgba(17,17,17,.01)" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                      <div><label style={F_LBL}>Cash</label>
+                        <input type="number" min="0" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} style={F_INP} />
+                      </div>
+                      <div><label style={F_LBL}>M-Pesa</label>
+                        <input type="number" min="0" value={mpesaAmount} onChange={(e) => setMpesaAmount(e.target.value)} style={F_INP} />
+                      </div>
+                    </div>
+                    <div><label style={F_LBL}>Reference</label>
+                      <input value={mpesaRef} onChange={(e) => setMpesaRef(e.target.value)} placeholder="QA12..." style={F_INP} />
+                    </div>
                   </div>
-                )}
-              </div>
-            )}
-
-            {amtPaid > 0 && totalDue > 0 && (
-              <div style={{ marginTop: "10px" }}>
-                <BalanceBar totalDue={totalDue} amtPaid={amtPaid} />
-              </div>
-            )}
+                </div>
+              )}
+              {amtPaid > 0 && totalDue > 0 && (
+                <div style={{ marginTop: "10px" }}>
+                  <BalanceBar totalDue={totalDue} amtPaid={amtPaid} />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Notes */}
           <div>
-            <label style={F_LBL}>Notes (optional)</label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Any additional notes…"
-              style={{ ...F_INP, height: "auto", padding: "8px 10px", resize: "vertical", lineHeight: "1.5" }} />
+            <label style={F_LBL}>Notes</label>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={1} placeholder="Any notes…"
+              style={{ ...F_INP, height: "auto", padding: "6px 10px", resize: "vertical", fontSize: ".75rem" }} />
           </div>
 
           {/* CTAs */}
           <div style={{ display: "flex", gap: "10px" }}>
             <button type="submit" disabled={loading} style={{
-              flex: 2, height: "44px", background: loading ? "rgba(232,73,15,.55)" : "#E8490F",
+              flex: 2, height: "40px", background: loading ? "rgba(232,73,15,.5)" : "#E8490F",
               color: "#fff", border: "none", borderRadius: "8px", fontWeight: 800,
-              fontSize: ".88rem", cursor: loading ? "not-allowed" : "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-              letterSpacing: "-.01em",
+              fontSize: ".85rem", cursor: loading ? "not-allowed" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "7px",
             }}>
               {loading ? <><i className="fas fa-spinner fa-spin" />Saving…</> : <><i className="fas fa-save" />Save Changes</>}
             </button>
-            <button type="button" onClick={onClose} style={{ flex: 1, height: "44px", background: "rgba(17,17,17,.06)", border: "none", borderRadius: "8px", fontWeight: 700, fontSize: ".84rem", color: "var(--dark)", cursor: "pointer" }}>
+            <button type="button" onClick={onClose} style={{ flex: 1, height: "40px", background: "rgba(17,17,17,.05)", border: "none", borderRadius: "8px", fontWeight: 700, fontSize: ".82rem", color: "var(--dark)", cursor: "pointer" }}>
               Cancel
             </button>
           </div>
