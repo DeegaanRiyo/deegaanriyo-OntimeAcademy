@@ -12,17 +12,20 @@ type FlagInfo = {
 };
 
 export type PhysicalStudent = {
-  id:           string;
-  type:         string;
-  name:         string;
-  phone:        string;
-  class_name:   string;
-  student_type: string | null;
-  total_paid:   number;
-  total_due:    number | null;
-  method:       string;
-  payment_date: string;
-  open_flags:   FlagInfo[];
+  id:                 string;
+  type:               string;
+  name:               string;
+  phone:              string;
+  class_name:         string;
+  student_type:       string | null;
+  total_paid:         number;
+  total_due:          number | null;
+  course_fee_monthly: number | null;
+  joined_at:          string | null;
+  notes:              string | null;
+  method:             string;
+  payment_date:       string;
+  open_flags:         FlagInfo[];
 };
 
 export type OnlineStudent = {
@@ -57,6 +60,12 @@ const STYPE_LABELS: Record<string, { label: string; color: string; bg: string }>
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function cleanNotes(notes: string | null) {
+  if (!notes) return "";
+  const metaKeys = ["Class:", "student_type=", "monthly=", "reg_fee=", "total_due=", "cash=", "mpesa=", "mpesa_ref=", "joined_at="];
+  return notes.split(". ").filter((p) => !metaKeys.some((k) => p.startsWith(k))).join(". ");
 }
 
 function fmtTime(iso: string) {
@@ -213,11 +222,14 @@ function DeleteConfirmModal({ student, onClose, onDeleted }: {
 
 // ─── Physical tab ─────────────────────────────────────────────────────────────
 
+type CategoryFilter = "all" | "new" | "returning" | "online";
+
 function PhysicalView({ students }: { students: PhysicalStudent[] }) {
-  const [expandedFlags, setExpandedFlags] = useState<Set<string>>(new Set());
-  const [resolvedFlags, setResolvedFlags] = useState<Set<string>>(new Set());
-  const [deletedIds,    setDeletedIds]    = useState<Set<string>>(new Set());
-  const [deleteTarget,  setDeleteTarget]  = useState<PhysicalStudent | null>(null);
+  const [expandedFlags,   setExpandedFlags]   = useState<Set<string>>(new Set());
+  const [resolvedFlags,   setResolvedFlags]   = useState<Set<string>>(new Set());
+  const [deletedIds,      setDeletedIds]      = useState<Set<string>>(new Set());
+  const [deleteTarget,    setDeleteTarget]    = useState<PhysicalStudent | null>(null);
+  const [categoryFilter,  setCategoryFilter]  = useState<CategoryFilter>("all");
 
   function toggleFlags(id: string) {
     setExpandedFlags((prev) => {
@@ -238,9 +250,21 @@ function PhysicalView({ students }: { students: PhysicalStudent[] }) {
   // Filter out locally deleted rows
   const visible = students.filter((s) => !deletedIds.has(s.id));
 
+  // Category counts (before filter)
+  const countNew       = visible.filter((s) => s.student_type === "new"       || s.student_type === null).length;
+  const countReturning = visible.filter((s) => s.student_type === "returning").length;
+  const countOnline    = visible.filter((s) => s.student_type === "online").length;
+
+  // Apply category filter
+  const categorised =
+    categoryFilter === "new"       ? visible.filter((s) => s.student_type === "new" || s.student_type === null) :
+    categoryFilter === "returning" ? visible.filter((s) => s.student_type === "returning") :
+    categoryFilter === "online"    ? visible.filter((s) => s.student_type === "online") :
+    visible;
+
   // Group by class
   const grouped: Record<string, PhysicalStudent[]> = {};
-  for (const s of visible) {
+  for (const s of categorised) {
     const key = s.class_name || "Unassigned";
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(s);
@@ -258,6 +282,13 @@ function PhysicalView({ students }: { students: PhysicalStudent[] }) {
     );
   }
 
+  const categoryBtns: { key: CategoryFilter; label: string; icon: string; count: number; color: string; bg: string }[] = [
+    { key: "all",       label: "All",         icon: "fa-users",        count: visible.length, color: "var(--dark)",  bg: "rgba(17,17,17,.06)"    },
+    { key: "new",       label: "New",         icon: "fa-user-plus",    count: countNew,       color: "var(--teal2)", bg: "rgba(193,68,14,.06)"   },
+    { key: "returning", label: "Current/Old", icon: "fa-user-check",   count: countReturning, color: "#16a34a",      bg: "rgba(34,197,94,.06)"   },
+    { key: "online",    label: "Online",      icon: "fa-wifi",         count: countOnline,    color: "#7c3aed",      bg: "rgba(124,58,237,.06)"  },
+  ];
+
   return (
     <>
       {deleteTarget && (
@@ -267,6 +298,44 @@ function PhysicalView({ students }: { students: PhysicalStudent[] }) {
           onDeleted={markDeleted}
         />
       )}
+      {/* Category filter strip */}
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        {categoryBtns.map((btn) => {
+          const active = categoryFilter === btn.key;
+          return (
+            <button
+              key={btn.key}
+              onClick={() => setCategoryFilter((f) => f === btn.key ? "all" : btn.key)}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: "7px",
+                padding: "8px 16px", borderRadius: "8px", cursor: "pointer",
+                fontSize: ".78rem", fontWeight: 700,
+                background: active ? btn.bg : "rgba(17,17,17,.03)",
+                border: active ? `1.5px solid ${btn.color}` : "1px solid rgba(17,17,17,.1)",
+                color: active ? btn.color : "var(--muted)", transition: "all .15s",
+              }}
+            >
+              <i className={`fas ${btn.icon}`} style={{ fontSize: ".7rem" }} />
+              {btn.label}
+              <span style={{
+                padding: "1px 6px", borderRadius: "6px", fontSize: ".62rem", fontWeight: 800,
+                background: active ? `${btn.color}22` : "rgba(17,17,17,.08)",
+                color: active ? btn.color : "var(--muted)",
+              }}>
+                {btn.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {categorised.length === 0 ? (
+        <div className="card">
+          <div style={{ padding: "40px", textAlign: "center", color: "var(--muted)", fontSize: ".85rem" }}>
+            No students in this category
+          </div>
+        </div>
+      ) : (
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
         {classes.map((cls) => (
           <div key={cls} className="card" style={{ padding: 0, overflow: "hidden" }}>
@@ -286,8 +355,8 @@ function PhysicalView({ students }: { students: PhysicalStudent[] }) {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "rgba(17,17,17,.03)", borderBottom: "1px solid rgba(17,17,17,.08)" }}>
-                    {["Student", "Phone", "Category", "Paid", "Due", "Balance", "Method", "Registered", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "8px 14px", textAlign: i === 8 ? "right" : "left", fontSize: ".62rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "var(--muted)", whiteSpace: "nowrap" }}>{h}</th>
+                    {["Student", "Phone", "Joined", "Category", "Monthly Fee", "Paid", "Due", "Balance", "Method", "Registered", ""].map((h, i) => (
+                      <th key={i} style={{ padding: "8px 14px", textAlign: i === 10 ? "right" : "left", fontSize: ".62rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "var(--muted)", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -315,22 +384,33 @@ function PhysicalView({ students }: { students: PhysicalStudent[] }) {
                                 {initials(s.name)}
                               </div>
                               <div>
-                                <span style={{ fontWeight: 600, color: "var(--dark)", fontSize: ".85rem" }}>{s.name}</span>
-                                {hasFlagOpen && (
-                                  <button
-                                    onClick={() => toggleFlags(s.id)}
-                                    style={{ marginLeft: "7px", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                                    title={`${visibleFlags.length} open flag${visibleFlags.length !== 1 ? "s" : ""}`}
-                                  >
-                                    <span style={{ fontSize: ".6rem", fontWeight: 800, background: "rgba(239,68,68,.15)", color: "#dc2626", padding: "1px 6px", borderRadius: "4px" }}>
-                                      <i className="fas fa-flag" style={{ marginRight: "3px" }} />{visibleFlags.length}
-                                    </span>
-                                  </button>
+                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                  <span style={{ fontWeight: 600, color: "var(--dark)", fontSize: ".85rem" }}>{s.name}</span>
+                                  {hasFlagOpen && (
+                                    <button
+                                      onClick={() => toggleFlags(s.id)}
+                                      style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                                      title={`${visibleFlags.length} open flag${visibleFlags.length !== 1 ? "s" : ""}`}
+                                    >
+                                      <span style={{ fontSize: ".6rem", fontWeight: 800, background: "rgba(239,68,68,.15)", color: "#dc2626", padding: "1px 6px", borderRadius: "4px" }}>
+                                        <i className="fas fa-flag" style={{ marginRight: "3px" }} />{visibleFlags.length}
+                                      </span>
+                                    </button>
+                                  )}
+                                </div>
+                                {cleanNotes(s.notes) && (
+                                  <div style={{ fontSize: ".68rem", color: "var(--muted)", fontStyle: "italic", maxWidth: "160px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={cleanNotes(s.notes)}>
+                                    {cleanNotes(s.notes)}
+                                  </div>
                                 )}
                               </div>
                             </div>
                           </td>
                           <td style={{ padding: "10px 14px", fontSize: ".78rem", color: "var(--muted)" }}>{s.phone}</td>
+                          {/* Joined date */}
+                          <td style={{ padding: "10px 14px", fontSize: ".75rem", color: "var(--muted)" }}>
+                            {fmtDate(s.joined_at)}
+                          </td>
                           {/* Category badge */}
                           <td style={{ padding: "10px 14px" }}>
                             {stype ? (
@@ -339,17 +419,30 @@ function PhysicalView({ students }: { students: PhysicalStudent[] }) {
                               </span>
                             ) : <span style={{ color: "var(--muted)", fontSize: ".75rem" }}>—</span>}
                           </td>
+                          {/* Monthly fee */}
+                          <td style={{ padding: "10px 14px", fontSize: ".78rem", color: "var(--muted)" }}>
+                            {s.course_fee_monthly ? `KES ${s.course_fee_monthly.toLocaleString()}` : "—"}
+                          </td>
                           <td style={{ padding: "10px 14px", fontWeight: 700, color: "var(--dark)", fontSize: ".82rem" }}>
                             KES {s.total_paid.toLocaleString()}
                           </td>
                           <td style={{ padding: "10px 14px", fontSize: ".78rem", color: "var(--muted)" }}>
                             {s.total_due ? `KES ${s.total_due.toLocaleString()}` : "—"}
                           </td>
+                          {/* Balance with Paid/Owes badges */}
                           <td style={{ padding: "10px 14px", fontSize: ".8rem" }}>
                             {balance !== null ? (
-                              <span style={{ fontWeight: 700, color: balance > 0 ? "#d97706" : "#16a34a" }}>
-                                {balance > 0 ? `KES ${balance.toLocaleString()}` : "Paid"}
-                              </span>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <span style={{ fontWeight: 700, color: balance > 0 ? "#d97706" : "#16a34a" }}>
+                                  {balance > 0 ? `KES ${balance.toLocaleString()}` : "0"}
+                                </span>
+                                {balance === 0 && (
+                                  <span style={{ fontSize: ".6rem", fontWeight: 800, textTransform: "uppercase", background: "rgba(22,163,74,.12)", color: "#16a34a", padding: "1px 5px", borderRadius: "4px" }}>Paid</span>
+                                )}
+                                {balance > 0 && (
+                                  <span style={{ fontSize: ".6rem", fontWeight: 800, textTransform: "uppercase", background: "rgba(245,158,11,.12)", color: "#d97706", padding: "1px 5px", borderRadius: "4px" }}>Owes</span>
+                                )}
+                              </div>
                             ) : "—"}
                           </td>
                           <td style={{ padding: "10px 14px", fontSize: ".75rem", color: "var(--muted)" }}>
@@ -376,7 +469,7 @@ function PhysicalView({ students }: { students: PhysicalStudent[] }) {
                         {/* Flag panel */}
                         {hasFlagOpen && expandedFlags.has(s.id) && (
                           <tr style={{ borderBottom: "1px solid rgba(17,17,17,.06)" }}>
-                            <td colSpan={9} style={{ padding: "0 14px 12px 52px" }}>
+                            <td colSpan={11} style={{ padding: "0 14px 12px 52px" }}>
                               <FlagsPanel flags={visibleFlags} onResolved={markResolved} />
                             </td>
                           </tr>
@@ -390,6 +483,7 @@ function PhysicalView({ students }: { students: PhysicalStudent[] }) {
           </div>
         ))}
       </div>
+      )}
     </>
   );
 }

@@ -106,22 +106,27 @@ export default async function OwnerStudentsPage() {
 
   // Map to PhysicalStudent[]
   const physical: PhysicalStudent[] = Array.from(regMap.values()).map((p: any) => {
-    const cls         = extractClassName(p.notes) || "Unassigned";
-    const key         = `phone:${p.customer_phone}:${cls === "Unassigned" ? "" : cls}`;
-    const studentType = extractMeta(p.notes, "student_type");
-    const totalDue    = extractMetaNumber(p.notes, "total_due");
+    const cls              = extractClassName(p.notes) || "Unassigned";
+    const key              = `phone:${p.customer_phone}:${cls === "Unassigned" ? "" : cls}`;
+    const studentType      = extractMeta(p.notes, "student_type");
+    const totalDue         = extractMetaNumber(p.notes, "total_due");
+    const courseFeMonthly  = extractMetaNumber(p.notes, "monthly");
+    const joinedAt         = extractMeta(p.notes, "joined_at");
     return {
-      id:           p.id,
-      type:         p.type,
-      name:         p.customer_name ?? "—",
-      phone:        p.customer_phone ?? "—",
-      class_name:   cls,
-      student_type: studentType,
-      total_paid:   totalMap.get(key) ?? (p.amount ?? 0),
-      total_due:    totalDue || null,
-      method:       p.method ?? "",
-      payment_date: p.created_at,
-      open_flags:   flagsByPayment.get(p.id) ?? [],
+      id:                 p.id,
+      type:               p.type,
+      name:               p.customer_name ?? "—",
+      phone:              p.customer_phone ?? "—",
+      class_name:         cls,
+      student_type:       studentType,
+      total_paid:         totalMap.get(key) ?? (p.amount ?? 0),
+      total_due:          totalDue || null,
+      course_fee_monthly: courseFeMonthly || null,
+      joined_at:          joinedAt ?? p.created_at,
+      notes:              p.notes,
+      method:             p.method ?? "",
+      payment_date:       p.created_at,
+      open_flags:         flagsByPayment.get(p.id) ?? [],
     };
   });
 
