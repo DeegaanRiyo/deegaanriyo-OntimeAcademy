@@ -330,7 +330,7 @@ function PhysicalView({ students }: { students: PhysicalStudent[] }) {
                                       <button
                                         onClick={() => toggleFlags(s.id)}
                                         title={`${visibleFlags.length} open flag${visibleFlags.length !== 1 ? "s" : ""}`}
-                                        style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center", gap: "3px", fontSize: ".58rem", fontWeight: 800, color: "#dc2626", background: "rgba(220,38,38,.1)", borderRadius: "3px", padding: "1px 5px" }}
+                                        style={{ background: "rgba(220,38,38,.1)", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "3px", fontSize: ".58rem", fontWeight: 800, color: "#dc2626", borderRadius: "3px", padding: "1px 5px" }}
                                       >
                                         <i className="fas fa-flag" style={{ fontSize: ".5rem" }} />{visibleFlags.length}
                                       </button>
