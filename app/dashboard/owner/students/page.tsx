@@ -179,7 +179,7 @@ export default async function OwnerStudentsPage() {
       <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
         {[
           { label: "Physical Students", count: physical.filter((s) => s.type === "physical_class").length, color: "var(--teal2)", icon: "fa-chalkboard-teacher" },
-          { label: "Online Students",   count: physical.filter((s) => s.type === "online_class").length,   color: "#7c3aed",      icon: "fa-wifi"             },
+          { label: "Zoom Students",     count: physical.filter((s) => s.type === "online_class").length,   color: "#7c3aed",      icon: "fa-video"            },
           { label: "Classes",           count: physicalClasses,                                             color: "var(--teal)",  icon: "fa-door-open"        },
           { label: "Platform Students", count: online.length,                                               color: "#2563eb",      icon: "fa-laptop"           },
           { label: "Open Flags",        count: openFlagCount,                                               color: "#dc2626",      icon: "fa-flag"             },

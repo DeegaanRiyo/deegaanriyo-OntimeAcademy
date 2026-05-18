@@ -38,7 +38,7 @@ export async function PATCH(
       phone?:               string;
       email?:               string | null;
       class_name?:          string;
-      student_type?:        "new" | "returning";
+      student_type?:        "new" | "returning" | "online";
       course_fee_monthly?:  number;
       registration_fee?:    number;
       total_due?:           number;

@@ -52,9 +52,9 @@ const METHOD_LABELS: Record<string, string> = {
 };
 
 const STYPE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  new:       { label: "New",       color: "var(--teal2)", bg: "rgba(193,68,14,.1)"   },
-  returning: { label: "Old",       color: "#16a34a",      bg: "rgba(34,197,94,.1)"   },
-  online:    { label: "Online",    color: "#7c3aed",      bg: "rgba(124,58,237,.1)"  },
+  new:       { label: "New",        color: "var(--teal2)", bg: "rgba(193,68,14,.1)"   },
+  returning: { label: "Old",        color: "#16a34a",      bg: "rgba(34,197,94,.1)"   },
+  online:    { label: "Zoom Class", color: "#7c3aed",      bg: "rgba(124,58,237,.1)"  },
 };
 
 function fmtDate(iso: string | null | undefined) {
@@ -286,7 +286,7 @@ function PhysicalView({ students }: { students: PhysicalStudent[] }) {
     { key: "all",       label: "All",         icon: "fa-users",        count: visible.length, color: "var(--dark)",  bg: "rgba(17,17,17,.06)"    },
     { key: "new",       label: "New",         icon: "fa-user-plus",    count: countNew,       color: "var(--teal2)", bg: "rgba(193,68,14,.06)"   },
     { key: "returning", label: "Current/Old", icon: "fa-user-check",   count: countReturning, color: "#16a34a",      bg: "rgba(34,197,94,.06)"   },
-    { key: "online",    label: "Online",      icon: "fa-wifi",         count: countOnline,    color: "#7c3aed",      bg: "rgba(124,58,237,.06)"  },
+    { key: "online",    label: "Zoom Class",  icon: "fa-video",        count: countOnline,    color: "#7c3aed",      bg: "rgba(124,58,237,.06)"  },
   ];
 
   return (
