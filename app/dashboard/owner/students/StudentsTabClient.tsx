@@ -76,22 +76,53 @@ function initials(name: string | null) {
 const TH: React.CSSProperties = {
   padding: "7px 12px", textAlign: "left", fontSize: ".58rem",
   fontWeight: 700, textTransform: "uppercase", letterSpacing: ".09em",
-  color: "rgba(17,17,17,.35)", whiteSpace: "nowrap", background: "rgba(17,17,17,.015)",
+  color: "#6B7280", whiteSpace: "nowrap", background: "rgba(17,17,17,.015)",
 };
 const TD: React.CSSProperties = {
   padding: "0 12px", height: "40px", verticalAlign: "middle",
-  fontSize: ".78rem", color: "var(--dark)",
+  fontSize: ".78rem", color: "#111827",
 };
 const TD_M: React.CSSProperties = {
   padding: "0 12px", height: "40px", verticalAlign: "middle",
-  fontSize: ".75rem", color: "rgba(17,17,17,.48)",
+  fontSize: ".75rem", color: "#4B5563",
 };
 const ACT_BTN: React.CSSProperties = {
-  width: "25px", height: "25px", display: "inline-flex", alignItems: "center",
-  justifyContent: "center", background: "rgba(17,17,17,.05)",
-  border: "none", borderRadius: "5px", cursor: "pointer",
-  color: "rgba(17,17,17,.48)", fontSize: ".62rem", textDecoration: "none",
+  width: "28px", height: "28px", display: "inline-flex", alignItems: "center",
+  justifyContent: "center", background: "#F3F4F6", border: "none",
+  borderRadius: "6px", cursor: "pointer", color: "#6B7280",
+  textDecoration: "none", fontSize: ".65rem", transition: "all .12s",
 };
+
+// ─── Inline Style for hover ──────────────────────────────────────────────────
+
+function ActionButton({ onClick, title, icon, color, href }: { onClick?: () => void; title: string; icon: string; color?: string; href?: string }) {
+  const [hover, setHover] = useState(false);
+  const baseStyle = {
+    ...ACT_BTN,
+    background: hover ? "#E5E7EB" : "#F3F4F6",
+    color: color ? color : (hover ? "#111827" : "#6B7280"),
+  };
+
+  if (href) {
+    return (
+      <a
+        href={href} title={title} style={baseStyle}
+        onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      >
+        <i className={`fas ${icon}`} />
+      </a>
+    );
+  }
+
+  return (
+    <button
+      onClick={onClick} title={title} style={baseStyle}
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+    >
+      <i className={`fas ${icon}`} />
+    </button>
+  );
+}
 
 // ─── Delete confirm modal ─────────────────────────────────────────────────────
 
@@ -282,9 +313,9 @@ function PhysicalView({ students }: { students: PhysicalStudent[] }) {
                     <tr>
                       <td colSpan={11} style={{ padding: "8px 14px 4px", background: "transparent" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <span style={{ fontSize: ".56rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".14em", color: "rgba(17,17,17,.28)", whiteSpace: "nowrap" }}>{cls}</span>
+                          <span style={{ fontSize: ".56rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".14em", color: "#374151", whiteSpace: "nowrap" }}>{cls}</span>
                           <div style={{ flex: 1, height: "1px", background: "rgba(17,17,17,.06)" }} />
-                          <span style={{ fontSize: ".56rem", color: "rgba(17,17,17,.22)", fontWeight: 600 }}>{grouped[cls].length}</span>
+                          <span style={{ fontSize: ".56rem", color: "#6B7280", fontWeight: 600 }}>{grouped[cls].length}</span>
                         </div>
                       </td>
                     </tr>
@@ -325,7 +356,7 @@ function PhysicalView({ students }: { students: PhysicalStudent[] }) {
                                 </div>
                                 <div>
                                   <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                                    <span style={{ fontWeight: 600, color: "var(--dark)", fontSize: ".8rem", whiteSpace: "nowrap" }}>{s.name}</span>
+                                    <span style={{ fontWeight: 600, color: "#111827", fontSize: ".8rem", whiteSpace: "nowrap" }}>{s.name}</span>
                                     {hasFlagOpen && (
                                       <button
                                         onClick={() => toggleFlags(s.id)}
@@ -337,7 +368,7 @@ function PhysicalView({ students }: { students: PhysicalStudent[] }) {
                                     )}
                                   </div>
                                   {cleanNotes(s.notes) && (
-                                    <div style={{ fontSize: ".63rem", color: "rgba(17,17,17,.38)", maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    <div style={{ fontSize: ".63rem", color: "#4B5563", maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                       {cleanNotes(s.notes)}
                                     </div>
                                   )}
@@ -355,7 +386,7 @@ function PhysicalView({ students }: { students: PhysicalStudent[] }) {
                                   <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: stype.dot, flexShrink: 0 }} />
                                   {stype.label}
                                 </span>
-                              ) : <span style={{ color: "rgba(17,17,17,.25)", fontSize: ".72rem" }}>—</span>}
+                              ) : <span style={{ color: "#4B5563", fontSize: ".72rem" }}>—</span>}
                             </td>
 
                             <td style={TD_M}>{s.course_fee_monthly ? s.course_fee_monthly.toLocaleString() : "—"}</td>
@@ -374,18 +405,16 @@ function PhysicalView({ students }: { students: PhysicalStudent[] }) {
                                     {balance.toLocaleString()} owes
                                   </span>
                                 )
-                              ) : <span style={{ color: "rgba(17,17,17,.25)", fontSize: ".72rem" }}>—</span>}
+                              ) : <span style={{ color: "#4B5563", fontSize: ".72rem" }}>—</span>}
                             </td>
 
                             <td style={TD_M}>{METHOD_LABELS[s.method] ?? s.method}</td>
                             <td style={{ ...TD_M, whiteSpace: "nowrap" }}>{fmtDate(s.payment_date)}</td>
 
-                            {/* Actions — hover only */}
-                            <td style={{ ...TD, textAlign: "right", paddingRight: "10px", opacity: isHovered ? 1 : 0, transition: "opacity .1s" }}>
-                              <div style={{ display: "inline-flex", gap: "3px" }}>
-                                <button onClick={() => setDeleteTarget(s)} title="Delete student" style={{ ...ACT_BTN, color: "#dc2626" }}>
-                                  <i className="fas fa-trash" />
-                                </button>
+                            {/* Actions — always visible */}
+                            <td style={{ ...TD, textAlign: "right", paddingRight: "10px" }}>
+                              <div style={{ display: "inline-flex", gap: "4px" }}>
+                                <ActionButton onClick={() => setDeleteTarget(s)} title="Delete student" icon="fa-trash" color="#EF4444" />
                               </div>
                             </td>
                           </tr>

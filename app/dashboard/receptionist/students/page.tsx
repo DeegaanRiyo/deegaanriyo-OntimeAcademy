@@ -78,22 +78,53 @@ const F_LBL: React.CSSProperties = {
 const TH: React.CSSProperties = {
   padding: "6px 12px", textAlign: "left", fontSize: ".55rem",
   fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em",
-  color: "rgba(17,17,17,.32)", whiteSpace: "nowrap", background: "rgba(17,17,17,.015)",
+  color: "#6B7280", whiteSpace: "nowrap", background: "rgba(17,17,17,.015)",
 };
 const TD: React.CSSProperties = {
   padding: "0 12px", height: "36px", verticalAlign: "middle",
-  fontSize: ".75rem", color: "var(--dark)",
+  fontSize: ".75rem", color: "#111827",
 };
 const TD_M: React.CSSProperties = {
   padding: "0 12px", height: "36px", verticalAlign: "middle",
-  fontSize: ".72rem", color: "rgba(17,17,17,.45)",
+  fontSize: ".72rem", color: "#4B5563",
 };
 const ACT_BTN: React.CSSProperties = {
-  width: "24px", height: "24px", display: "inline-flex", alignItems: "center",
-  justifyContent: "center", background: "transparent", border: "none",
-  borderRadius: "4px", cursor: "pointer", color: "rgba(17,17,17,.35)",
-  textDecoration: "none", fontSize: ".6rem", transition: "all .1s",
+  width: "28px", height: "28px", display: "inline-flex", alignItems: "center",
+  justifyContent: "center", background: "#F3F4F6", border: "none",
+  borderRadius: "6px", cursor: "pointer", color: "#6B7280",
+  textDecoration: "none", fontSize: ".65rem", transition: "all .12s",
 };
+
+// ─── Inline Style for hover ──────────────────────────────────────────────────
+
+function ActionButton({ onClick, title, icon, color, href }: { onClick?: () => void; title: string; icon: string; color?: string; href?: string }) {
+  const [hover, setHover] = useState(false);
+  const baseStyle = {
+    ...ACT_BTN,
+    background: hover ? "#E5E7EB" : "#F3F4F6",
+    color: color ? color : (hover ? "#111827" : "#6B7280"),
+  };
+
+  if (href) {
+    return (
+      <Link
+        href={href} title={title} style={baseStyle}
+        onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      >
+        <i className={`fas ${icon}`} />
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      onClick={onClick} title={title} style={baseStyle}
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+    >
+      <i className={`fas ${icon}`} />
+    </button>
+  );
+}
 
 // ─── Section divider for modals ────────────────────────────────────────────────
 
@@ -906,11 +937,11 @@ function StudentTable({ students, onEdit, onPay, onFlag }: {
                 <tr>
                   <td colSpan={11} style={{ padding: "8px 14px 4px", background: "transparent" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span style={{ fontSize: ".56rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".14em", color: "rgba(17,17,17,.28)", whiteSpace: "nowrap" }}>
+                      <span style={{ fontSize: ".56rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".14em", color: "#374151", whiteSpace: "nowrap" }}>
                         {cls}
                       </span>
                       <div style={{ flex: 1, height: "1px", background: "rgba(17,17,17,.06)" }} />
-                      <span style={{ fontSize: ".56rem", color: "rgba(17,17,17,.22)", fontWeight: 600 }}>
+                      <span style={{ fontSize: ".56rem", color: "#6B7280", fontWeight: 600 }}>
                         {grouped[cls].length}
                       </span>
                     </div>
@@ -949,13 +980,13 @@ function StudentTable({ students, onEdit, onPay, onFlag }: {
                           </div>
                           <div>
                             <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                              <span style={{ fontWeight: 600, color: "var(--dark)", fontSize: ".8rem", whiteSpace: "nowrap" }}>{s.name}</span>
+                              <span style={{ fontWeight: 600, color: "#111827", fontSize: ".8rem", whiteSpace: "nowrap" }}>{s.name}</span>
                               {s.student_type === "online" && (
                                 <span style={{ fontSize: ".48rem", fontWeight: 800, textTransform: "uppercase", background: "rgba(124,58,237,.1)", color: "#7c3aed", padding: "1px 4px", borderRadius: "3px", letterSpacing: ".04em" }}>Zoom</span>
                               )}
                             </div>
                             {cleanNotes(s.notes) && (
-                              <div style={{ fontSize: ".63rem", color: "rgba(17,17,17,.38)", maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <div style={{ fontSize: ".63rem", color: "#4B5563", maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {cleanNotes(s.notes)}
                               </div>
                             )}
@@ -983,27 +1014,19 @@ function StudentTable({ students, onEdit, onPay, onFlag }: {
                               {balance.toLocaleString()} owes
                             </span>
                           )
-                        ) : <span style={{ color: "rgba(17,17,17,.25)", fontSize: ".72rem" }}>—</span>}
+                        ) : <span style={{ color: "#4B5563", fontSize: ".72rem" }}>—</span>}
                       </td>
 
                       <td style={TD_M}>{METHOD_LABELS[s.method] ?? s.method}</td>
                       <td style={{ ...TD_M, whiteSpace: "nowrap" }}>{fmtDate(s.payment_date)}</td>
 
-                      {/* Actions — visible on hover only */}
-                      <td style={{ ...TD, textAlign: "right", opacity: isHovered ? 1 : 0, transition: "opacity .1s", paddingRight: "10px" }}>
-                        <div style={{ display: "inline-flex", gap: "3px", alignItems: "center" }}>
-                          <button onClick={() => onEdit(s)} title="Edit Student" style={ACT_BTN}>
-                            <i className="fas fa-pen" />
-                          </button>
-                          <button onClick={() => onPay(s)} title="Add Payment" style={{ ...ACT_BTN, color: "#E8490F" }}>
-                            <i className="fas fa-plus" />
-                          </button>
-                          <Link href={`/dashboard/receptionist/receipt/${s.id}`} title="View Receipt" style={ACT_BTN}>
-                            <i className="fas fa-receipt" />
-                          </Link>
-                          <button onClick={() => onFlag(s)} title="Flag for correction" style={{ ...ACT_BTN, color: "#dc2626" }}>
-                            <i className="fas fa-flag" />
-                          </button>
+                      {/* Actions — always visible */}
+                      <td style={{ ...TD, textAlign: "right", paddingRight: "10px" }}>
+                        <div style={{ display: "inline-flex", gap: "4px", alignItems: "center" }}>
+                          <ActionButton onClick={() => onEdit(s)} title="Edit Student" icon="fa-pen" />
+                          <ActionButton onClick={() => onPay(s)} title="Add Payment" icon="fa-plus" />
+                          <ActionButton href={`/dashboard/receptionist/receipt/${s.id}`} title="View Receipt" icon="fa-receipt" />
+                          <ActionButton onClick={() => onFlag(s)} title="Flag for correction" icon="fa-flag" color="#EF4444" />
                         </div>
                       </td>
                     </tr>

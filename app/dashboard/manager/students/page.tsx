@@ -41,22 +41,42 @@ const METHOD_LABELS: Record<string, string> = {
 const TH: React.CSSProperties = {
   padding: "6px 12px", textAlign: "left", fontSize: ".55rem",
   fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em",
-  color: "rgba(17,17,17,.32)", whiteSpace: "nowrap", background: "rgba(17,17,17,.015)",
+  color: "#6B7280", whiteSpace: "nowrap", background: "rgba(17,17,17,.015)",
 };
 const TD: React.CSSProperties = {
   padding: "0 12px", height: "36px", verticalAlign: "middle",
-  fontSize: ".75rem", color: "var(--dark)",
+  fontSize: ".75rem", color: "#111827",
 };
 const TD_M: React.CSSProperties = {
   padding: "0 12px", height: "36px", verticalAlign: "middle",
-  fontSize: ".72rem", color: "rgba(17,17,17,.45)",
+  fontSize: ".72rem", color: "#4B5563",
 };
 const ACT_BTN: React.CSSProperties = {
-  width: "24px", height: "24px", display: "inline-flex", alignItems: "center",
-  justifyContent: "center", background: "transparent", border: "none",
-  borderRadius: "4px", cursor: "pointer", color: "rgba(17,17,17,.35)",
-  textDecoration: "none", fontSize: ".6rem", transition: "all .1s",
+  width: "28px", height: "28px", display: "inline-flex", alignItems: "center",
+  justifyContent: "center", background: "#F3F4F6", border: "none",
+  borderRadius: "6px", cursor: "pointer", color: "#6B7280",
+  textDecoration: "none", fontSize: ".65rem", transition: "all .12s",
 };
+
+// ─── Inline Style for hover ──────────────────────────────────────────────────
+
+function ActionButton({ onClick, title, icon, color }: { onClick?: () => void; title: string; icon: string; color?: string }) {
+  const [hover, setHover] = useState(false);
+  const baseStyle = {
+    ...ACT_BTN,
+    background: hover ? "#E5E7EB" : "#F3F4F6",
+    color: color ? color : (hover ? "#111827" : "#6B7280"),
+  };
+
+  return (
+    <button
+      onClick={onClick} title={title} style={baseStyle}
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+    >
+      <i className={`fas ${icon}`} />
+    </button>
+  );
+}
 
 type FlagTarget = { id: string; label: string };
 
@@ -152,11 +172,11 @@ export default function ManagerStudentsPage() {
                     <tr>
                       <td colSpan={7} style={{ padding: "8px 14px 4px", background: "transparent" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <span style={{ fontSize: ".56rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".14em", color: "rgba(17,17,17,.28)", whiteSpace: "nowrap" }}>
+                          <span style={{ fontSize: ".56rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".14em", color: "#374151", whiteSpace: "nowrap" }}>
                             {cls}
                           </span>
                           <div style={{ flex: 1, height: "1px", background: "rgba(17,17,17,.06)" }} />
-                          <span style={{ fontSize: ".56rem", color: "rgba(17,17,17,.22)", fontWeight: 600 }}>
+                          <span style={{ fontSize: ".56rem", color: "#6B7280", fontWeight: 600 }}>
                             {grouped[cls].length}
                           </span>
                         </div>
@@ -186,7 +206,7 @@ export default function ManagerStudentsPage() {
                               }}>
                                 {initials(s.name)}
                               </div>
-                              <span style={{ fontWeight: 600, color: "var(--dark)", fontSize: ".8rem", whiteSpace: "nowrap" }}>{s.name}</span>
+                              <span style={{ fontWeight: 600, color: "#111827", fontSize: ".8rem", whiteSpace: "nowrap" }}>{s.name}</span>
                             </div>
                           </td>
                           <td style={TD_M}>{s.phone}</td>
@@ -194,14 +214,13 @@ export default function ManagerStudentsPage() {
                           <td style={{ ...TD, fontWeight: 600 }}>KES {s.total_paid.toLocaleString()}</td>
                           <td style={TD_M}>{METHOD_LABELS[s.method] ?? s.method}</td>
                           <td style={{ ...TD_M, whiteSpace: "nowrap" }}>{fmtDate(s.payment_date)}</td>
-                          <td style={{ ...TD, textAlign: "right", opacity: isHovered ? 1 : 0, transition: "opacity .1s", paddingRight: "10px" }}>
-                            <button
+                          <td style={{ ...TD, textAlign: "right", paddingRight: "10px" }}>
+                            <ActionButton
                               onClick={() => setFlagTarget({ id: s.id, label: `${s.name} – ${cls}` })}
                               title="Flag for correction"
-                              style={{ ...ACT_BTN, color: "#dc2626" }}
-                            >
-                              <i className="fas fa-flag" />
-                            </button>
+                              icon="fa-flag"
+                              color="#EF4444"
+                            />
                           </td>
                         </tr>
                       );
