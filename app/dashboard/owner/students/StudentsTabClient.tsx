@@ -144,11 +144,80 @@ function FlagsPanel({ flags, onResolved }: { flags: FlagInfo[]; onResolved: (id:
   );
 }
 
+// ─── Delete confirm modal ─────────────────────────────────────────────────────
+
+function DeleteConfirmModal({ student, onClose, onDeleted }: {
+  student: PhysicalStudent;
+  onClose:   () => void;
+  onDeleted: (id: string) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+
+  async function confirm() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/owner/students/${student.id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to delete");
+      onDeleted(student.id);
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 80, padding: "16px" }} onClick={onClose}>
+      <div className="card" style={{ maxWidth: "400px", width: "100%", padding: "24px", gap: 0 }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <h3 style={{ margin: 0, color: "#dc2626", display: "flex", alignItems: "center", gap: "8px", fontSize: "1rem" }}>
+            <i className="fas fa-trash" />Delete Student
+          </h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><i className="fas fa-times" /></button>
+        </div>
+
+        <div style={{ background: "rgba(220,38,38,.06)", border: "1px solid rgba(220,38,38,.2)", borderRadius: "9px", padding: "14px 16px", marginBottom: "18px" }}>
+          <div style={{ fontWeight: 700, color: "var(--dark)", fontSize: ".88rem" }}>{student.name}</div>
+          <div style={{ fontSize: ".75rem", color: "var(--muted)", marginTop: "2px" }}>{student.class_name} · {student.phone}</div>
+        </div>
+
+        <p style={{ fontSize: ".82rem", color: "var(--muted)", margin: "0 0 18px", lineHeight: 1.6 }}>
+          This will permanently delete this student record and all associated payment data. This action <strong style={{ color: "#dc2626" }}>cannot be undone</strong>.
+        </p>
+
+        {error && (
+          <div style={{ background: "rgba(220,38,38,.08)", border: "1px solid rgba(220,38,38,.25)", borderRadius: "7px", padding: "9px 12px", color: "#dc2626", fontSize: ".8rem", marginBottom: "14px" }}>{error}</div>
+        )}
+
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            onClick={confirm}
+            disabled={loading}
+            style={{ flex: 1, padding: "9px 16px", borderRadius: "8px", border: "none", background: "#dc2626", color: "#fff", fontWeight: 700, fontSize: ".85rem", cursor: "pointer", opacity: loading ? .6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}
+          >
+            {loading
+              ? <><i className="fas fa-spinner fa-spin" />Deleting…</>
+              : <><i className="fas fa-trash" />Yes, Delete</>
+            }
+          </button>
+          <button onClick={onClose} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Physical tab ─────────────────────────────────────────────────────────────
 
 function PhysicalView({ students }: { students: PhysicalStudent[] }) {
   const [expandedFlags, setExpandedFlags] = useState<Set<string>>(new Set());
   const [resolvedFlags, setResolvedFlags] = useState<Set<string>>(new Set());
+  const [deletedIds,    setDeletedIds]    = useState<Set<string>>(new Set());
+  const [deleteTarget,  setDeleteTarget]  = useState<PhysicalStudent | null>(null);
 
   function toggleFlags(id: string) {
     setExpandedFlags((prev) => {
@@ -162,16 +231,23 @@ function PhysicalView({ students }: { students: PhysicalStudent[] }) {
     setResolvedFlags((prev) => new Set(prev).add(flagId));
   }
 
+  function markDeleted(id: string) {
+    setDeletedIds((prev) => new Set(prev).add(id));
+  }
+
+  // Filter out locally deleted rows
+  const visible = students.filter((s) => !deletedIds.has(s.id));
+
   // Group by class
   const grouped: Record<string, PhysicalStudent[]> = {};
-  for (const s of students) {
+  for (const s of visible) {
     const key = s.class_name || "Unassigned";
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(s);
   }
   const classes = Object.keys(grouped).sort();
 
-  if (students.length === 0) {
+  if (visible.length === 0) {
     return (
       <div className="card">
         <div style={{ padding: "48px", textAlign: "center", color: "var(--muted)", fontSize: ".85rem" }}>
@@ -183,115 +259,138 @@ function PhysicalView({ students }: { students: PhysicalStudent[] }) {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-      {classes.map((cls) => (
-        <div key={cls} className="card" style={{ padding: 0, overflow: "hidden" }}>
-          {/* Class header */}
-          <div style={{
-            padding: "10px 16px", borderBottom: "2px solid var(--teal2)",
-            display: "flex", alignItems: "center", gap: "8px", background: "#fafafa",
-          }}>
-            <i className="fas fa-chalkboard-teacher" style={{ color: "var(--teal2)", fontSize: ".85rem" }} />
-            <span style={{ fontWeight: 700, fontSize: ".88rem", color: "var(--dark)" }}>{cls}</span>
-            <span style={{ fontSize: ".72rem", color: "var(--muted)" }}>
-              {grouped[cls].length} student{grouped[cls].length !== 1 ? "s" : ""}
-            </span>
-          </div>
+    <>
+      {deleteTarget && (
+        <DeleteConfirmModal
+          student={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={markDeleted}
+        />
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        {classes.map((cls) => (
+          <div key={cls} className="card" style={{ padding: 0, overflow: "hidden" }}>
+            {/* Class header */}
+            <div style={{
+              padding: "10px 16px", borderBottom: "2px solid var(--teal2)",
+              display: "flex", alignItems: "center", gap: "8px", background: "#fafafa",
+            }}>
+              <i className="fas fa-chalkboard-teacher" style={{ color: "var(--teal2)", fontSize: ".85rem" }} />
+              <span style={{ fontWeight: 700, fontSize: ".88rem", color: "var(--dark)" }}>{cls}</span>
+              <span style={{ fontSize: ".72rem", color: "var(--muted)" }}>
+                {grouped[cls].length} student{grouped[cls].length !== 1 ? "s" : ""}
+              </span>
+            </div>
 
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "rgba(17,17,17,.03)", borderBottom: "1px solid rgba(17,17,17,.08)" }}>
-                  {["Student", "Phone", "Category", "Paid", "Due", "Balance", "Method", "Registered"].map((h) => (
-                    <th key={h} style={{ padding: "8px 14px", textAlign: "left", fontSize: ".62rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "var(--muted)", whiteSpace: "nowrap" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {grouped[cls].map((s) => {
-                  const visibleFlags = s.open_flags.filter((f) => !resolvedFlags.has(f.id));
-                  const hasFlagOpen  = visibleFlags.length > 0;
-                  const balance      = s.total_due ? Math.max(0, s.total_due - s.total_paid) : null;
-                  const stype        = s.student_type ? STYPE_LABELS[s.student_type] : null;
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "rgba(17,17,17,.03)", borderBottom: "1px solid rgba(17,17,17,.08)" }}>
+                    {["Student", "Phone", "Category", "Paid", "Due", "Balance", "Method", "Registered", ""].map((h, i) => (
+                      <th key={i} style={{ padding: "8px 14px", textAlign: i === 8 ? "right" : "left", fontSize: ".62rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "var(--muted)", whiteSpace: "nowrap" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {grouped[cls].map((s) => {
+                    const visibleFlags = s.open_flags.filter((f) => !resolvedFlags.has(f.id));
+                    const hasFlagOpen  = visibleFlags.length > 0;
+                    const balance      = s.total_due ? Math.max(0, s.total_due - s.total_paid) : null;
+                    const stype        = s.student_type ? STYPE_LABELS[s.student_type] : null;
 
-                  return (
-                    <React.Fragment key={s.id}>
-                      <tr style={{ borderBottom: hasFlagOpen ? "none" : "1px solid rgba(17,17,17,.06)", background: hasFlagOpen ? "rgba(239,68,68,.02)" : undefined }}>
-                        {/* Name */}
-                        <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-                            <div style={{
-                              width: "30px", height: "30px", borderRadius: "50%",
-                              background: s.type === "online_class"
-                                ? "linear-gradient(135deg,#7c3aed,#a78bfa)"
-                                : "linear-gradient(135deg,var(--teal),var(--teal2))",
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                              fontSize: ".6rem", fontWeight: 700, color: "#fff", flexShrink: 0,
-                            }}>
-                              {initials(s.name)}
+                    return (
+                      <React.Fragment key={s.id}>
+                        <tr style={{ borderBottom: hasFlagOpen ? "none" : "1px solid rgba(17,17,17,.06)", background: hasFlagOpen ? "rgba(239,68,68,.02)" : undefined }}>
+                          {/* Name */}
+                          <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+                              <div style={{
+                                width: "30px", height: "30px", borderRadius: "50%",
+                                background: s.type === "online_class"
+                                  ? "linear-gradient(135deg,#7c3aed,#a78bfa)"
+                                  : "linear-gradient(135deg,var(--teal),var(--teal2))",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                fontSize: ".6rem", fontWeight: 700, color: "#fff", flexShrink: 0,
+                              }}>
+                                {initials(s.name)}
+                              </div>
+                              <div>
+                                <span style={{ fontWeight: 600, color: "var(--dark)", fontSize: ".85rem" }}>{s.name}</span>
+                                {hasFlagOpen && (
+                                  <button
+                                    onClick={() => toggleFlags(s.id)}
+                                    style={{ marginLeft: "7px", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                                    title={`${visibleFlags.length} open flag${visibleFlags.length !== 1 ? "s" : ""}`}
+                                  >
+                                    <span style={{ fontSize: ".6rem", fontWeight: 800, background: "rgba(239,68,68,.15)", color: "#dc2626", padding: "1px 6px", borderRadius: "4px" }}>
+                                      <i className="fas fa-flag" style={{ marginRight: "3px" }} />{visibleFlags.length}
+                                    </span>
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <span style={{ fontWeight: 600, color: "var(--dark)", fontSize: ".85rem" }}>{s.name}</span>
-                              {hasFlagOpen && (
-                                <button
-                                  onClick={() => toggleFlags(s.id)}
-                                  style={{ marginLeft: "7px", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                                  title={`${visibleFlags.length} open flag${visibleFlags.length !== 1 ? "s" : ""}`}
-                                >
-                                  <span style={{ fontSize: ".6rem", fontWeight: 800, background: "rgba(239,68,68,.15)", color: "#dc2626", padding: "1px 6px", borderRadius: "4px" }}>
-                                    <i className="fas fa-flag" style={{ marginRight: "3px" }} />{visibleFlags.length}
-                                  </span>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: "10px 14px", fontSize: ".78rem", color: "var(--muted)" }}>{s.phone}</td>
-                        {/* Category badge */}
-                        <td style={{ padding: "10px 14px" }}>
-                          {stype ? (
-                            <span style={{ fontSize: ".65rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", padding: "2px 7px", borderRadius: "4px", color: stype.color, background: stype.bg }}>
-                              {stype.label}
-                            </span>
-                          ) : <span style={{ color: "var(--muted)", fontSize: ".75rem" }}>—</span>}
-                        </td>
-                        <td style={{ padding: "10px 14px", fontWeight: 700, color: "var(--dark)", fontSize: ".82rem" }}>
-                          KES {s.total_paid.toLocaleString()}
-                        </td>
-                        <td style={{ padding: "10px 14px", fontSize: ".78rem", color: "var(--muted)" }}>
-                          {s.total_due ? `KES ${s.total_due.toLocaleString()}` : "—"}
-                        </td>
-                        <td style={{ padding: "10px 14px", fontSize: ".8rem" }}>
-                          {balance !== null ? (
-                            <span style={{ fontWeight: 700, color: balance > 0 ? "#d97706" : "#16a34a" }}>
-                              {balance > 0 ? `KES ${balance.toLocaleString()}` : "Paid"}
-                            </span>
-                          ) : "—"}
-                        </td>
-                        <td style={{ padding: "10px 14px", fontSize: ".75rem", color: "var(--muted)" }}>
-                          {METHOD_LABELS[s.method] ?? s.method}
-                        </td>
-                        <td style={{ padding: "10px 14px", fontSize: ".75rem", color: "var(--muted)" }}>
-                          {fmtDate(s.payment_date)}
-                        </td>
-                      </tr>
-                      {/* Flag panel */}
-                      {hasFlagOpen && expandedFlags.has(s.id) && (
-                        <tr style={{ borderBottom: "1px solid rgba(17,17,17,.06)" }}>
-                          <td colSpan={8} style={{ padding: "0 14px 12px 52px" }}>
-                            <FlagsPanel flags={visibleFlags} onResolved={markResolved} />
+                          </td>
+                          <td style={{ padding: "10px 14px", fontSize: ".78rem", color: "var(--muted)" }}>{s.phone}</td>
+                          {/* Category badge */}
+                          <td style={{ padding: "10px 14px" }}>
+                            {stype ? (
+                              <span style={{ fontSize: ".65rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", padding: "2px 7px", borderRadius: "4px", color: stype.color, background: stype.bg }}>
+                                {stype.label}
+                              </span>
+                            ) : <span style={{ color: "var(--muted)", fontSize: ".75rem" }}>—</span>}
+                          </td>
+                          <td style={{ padding: "10px 14px", fontWeight: 700, color: "var(--dark)", fontSize: ".82rem" }}>
+                            KES {s.total_paid.toLocaleString()}
+                          </td>
+                          <td style={{ padding: "10px 14px", fontSize: ".78rem", color: "var(--muted)" }}>
+                            {s.total_due ? `KES ${s.total_due.toLocaleString()}` : "—"}
+                          </td>
+                          <td style={{ padding: "10px 14px", fontSize: ".8rem" }}>
+                            {balance !== null ? (
+                              <span style={{ fontWeight: 700, color: balance > 0 ? "#d97706" : "#16a34a" }}>
+                                {balance > 0 ? `KES ${balance.toLocaleString()}` : "Paid"}
+                              </span>
+                            ) : "—"}
+                          </td>
+                          <td style={{ padding: "10px 14px", fontSize: ".75rem", color: "var(--muted)" }}>
+                            {METHOD_LABELS[s.method] ?? s.method}
+                          </td>
+                          <td style={{ padding: "10px 14px", fontSize: ".75rem", color: "var(--muted)" }}>
+                            {fmtDate(s.payment_date)}
+                          </td>
+                          {/* Delete action */}
+                          <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                            <button
+                              onClick={() => setDeleteTarget(s)}
+                              title="Delete student"
+                              style={{
+                                background: "none", border: "1px solid rgba(220,38,38,.2)",
+                                borderRadius: "6px", padding: "4px 8px", cursor: "pointer",
+                                color: "#dc2626", fontSize: ".7rem", lineHeight: 1,
+                              }}
+                            >
+                              <i className="fas fa-trash" />
+                            </button>
                           </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
+                        {/* Flag panel */}
+                        {hasFlagOpen && expandedFlags.has(s.id) && (
+                          <tr style={{ borderBottom: "1px solid rgba(17,17,17,.06)" }}>
+                            <td colSpan={9} style={{ padding: "0 14px 12px 52px" }}>
+                              <FlagsPanel flags={visibleFlags} onResolved={markResolved} />
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    </>
   );
 }
 
