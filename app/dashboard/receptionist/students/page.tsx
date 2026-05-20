@@ -144,7 +144,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
   const [notes,        setNotes]        = useState("");
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState<string | null>(null);
-  const [success,      setSuccess]      = useState<{ name: string; balance: number } | null>(null);
+  const [success,      setSuccess]      = useState<{ name: string; balance: number; id: string } | null>(null);
 
   const showRef     = method === "mpesa" || method === "bank_transfer" || method === "both";
   const showRegFee  = studentType === "new";
@@ -195,7 +195,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Failed");
-      setSuccess({ name: fullName, balance: Math.max(0, balance) });
+      setSuccess({ name: fullName, balance: Math.max(0, balance), id: json.registration_id });
       onRegistered();
     } catch (err: any) {
       setError(err.message);
@@ -233,13 +233,22 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
             ) : (
               <div style={{ fontSize: ".75rem", color: "rgba(17,17,17,.4)", marginBottom: "20px" }}>Fully paid — no balance outstanding.</div>
             )}
-            <div style={{ display: "flex", gap: "10px", maxWidth: "300px", margin: "0 auto" }}>
-              <button onClick={() => { setSuccess(null); reset(); }} style={{ flex: 1, height: "40px", background: "#E8490F", color: "#fff", border: "none", borderRadius: "7px", fontWeight: 700, fontSize: ".82rem", cursor: "pointer" }}>
-                Add Another
-              </button>
-              <button onClick={onClose} style={{ flex: 1, height: "40px", background: "rgba(17,17,17,.05)", border: "none", borderRadius: "7px", fontWeight: 700, fontSize: ".82rem", color: "var(--dark)", cursor: "pointer" }}>
-                Done
-              </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxWidth: "300px", margin: "0 auto" }}>
+              <a
+                href={`/dashboard/receptionist/receipt/${success.id}`}
+                target="_blank" rel="noopener noreferrer"
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", height: "40px", background: "#111", color: "#fff", border: "none", borderRadius: "7px", fontWeight: 700, fontSize: ".82rem", cursor: "pointer", textDecoration: "none" }}
+              >
+                <i className="fas fa-receipt" />Print Receipt
+              </a>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button onClick={() => { setSuccess(null); reset(); }} style={{ flex: 1, height: "38px", background: "#E8490F", color: "#fff", border: "none", borderRadius: "7px", fontWeight: 700, fontSize: ".8rem", cursor: "pointer" }}>
+                  Add Another
+                </button>
+                <button onClick={onClose} style={{ flex: 1, height: "38px", background: "rgba(17,17,17,.05)", border: "none", borderRadius: "7px", fontWeight: 700, fontSize: ".8rem", color: "var(--dark)", cursor: "pointer" }}>
+                  Done
+                </button>
+              </div>
             </div>
           </div>
         ) : (
