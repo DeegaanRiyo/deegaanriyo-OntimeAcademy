@@ -25,19 +25,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { payment_id, message } = await req.json() as {
-      payment_id: string;
-      message:    string;
+    const { registration_id, message } = await req.json() as {
+      registration_id: string;
+      message:         string;
     };
 
-    if (!payment_id || !message?.trim()) {
-      return NextResponse.json({ error: "payment_id and message are required" }, { status: 400 });
+    if (!registration_id || !message?.trim()) {
+      return NextResponse.json({ error: "registration_id and message are required" }, { status: 400 });
     }
 
     const { data, error } = await admin
       .from("student_flags")
       .insert({
-        payment_id,
+        registration_id,
         flagged_by: user.id,
         message:    message.trim(),
         status:     "open",

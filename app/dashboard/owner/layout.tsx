@@ -25,13 +25,12 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
   const name     = profile.full_name || profile.email || "Chief Executive Officer";
   const initials = name.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
 
-  // Pending bookings badge
+  // ── Badge counts ─────────────────────────────────────────────────────────────
   const { count: pendingBookings } = await serviceClient
     .from("bookings")
     .select("id", { count: "exact", head: true })
     .eq("status", "pending");
 
-  // Pending corrections badge (may not exist yet)
   let pendingCorrections = 0;
   try {
     const { count } = await serviceClient
@@ -41,7 +40,6 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
     pendingCorrections = count ?? 0;
   } catch {}
 
-  // Pending expense requests badge (may not exist yet)
   let pendingExpenses = 0;
   try {
     const { count } = await serviceClient
@@ -56,45 +54,58 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
     weekday: "short", day: "numeric", month: "short", year: "numeric",
   });
 
+  // ── Navigation ───────────────────────────────────────────────────────────────
   const NAV: NavSection[] = [
     {
-      label: "Overview",
+      label: "",
       items: [
-        { href: "/dashboard/owner", icon: "fa-th-large", label: "Dashboard" },
+        { href: "/dashboard/owner", icon: "fa-th-large", label: "Overview" },
       ],
     },
     {
       label: "People",
       items: [
-        { href: "/dashboard/owner/team",     icon: "fa-users",         label: "Staff"    },
-        { href: "/dashboard/owner/members",  icon: "fa-id-card",       label: "Members"  },
-        { href: "/dashboard/owner/students", icon: "fa-user-graduate", label: "Students" },
+        { href: "/dashboard/owner/students", icon: "fa-user-graduate", label: "Students"  },
+        { href: "/dashboard/owner/members",  icon: "fa-id-card",       label: "Members"   },
       ],
     },
     {
-      label: "Management",
+      label: "Operations",
       items: [
-        { href: "/dashboard/owner/financials",  icon: "fa-wallet",    label: "Financials"  },
         {
-          href: "/dashboard/owner/expenses",
-          icon: "fa-file-invoice-dollar",
-          label: "Expenses",
+          href:       "/dashboard/owner/bookings",
+          icon:       "fa-calendar-check",
+          label:      "Bookings",
+          badge:      (pendingBookings ?? 0) > 0 ? String(pendingBookings) : undefined,
+          badgeColor: "var(--gold)",
+        },
+        { href: "/dashboard/owner/financials", icon: "fa-wallet", label: "Financials" },
+        {
+          href:       "/dashboard/owner/expenses",
+          icon:       "fa-file-invoice-dollar",
+          label:      "Expenses",
           badge:      pendingExpenses > 0 ? String(pendingExpenses) : undefined,
           badgeColor: "var(--gold)",
         },
         {
-          href: "/dashboard/owner/corrections",
-          icon: "fa-flag",
-          label: "Corrections",
+          href:       "/dashboard/owner/corrections",
+          icon:       "fa-flag",
+          label:      "Corrections",
           badge:      pendingCorrections > 0 ? String(pendingCorrections) : undefined,
           badgeColor: "var(--gold)",
         },
-        { href: "/dashboard/owner/settings",    icon: "fa-sliders-h", label: "Settings"    },
       ],
     },
     {
-      label: "Site",
+      label: "Team",
       items: [
+        { href: "/dashboard/owner/team", icon: "fa-users", label: "Team Members" },
+      ],
+    },
+    {
+      label: "Account",
+      items: [
+        { href: "/dashboard/owner/profile", icon: "fa-user-circle", label: "My Profile" },
         { href: "/", icon: "fa-globe", label: "View Website", badge: "Live", badgeColor: "var(--gold)", target: "_blank" },
       ],
     },
@@ -104,7 +115,9 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
     <>
       <span className="tb-date">{dateStr}</span>
       {(pendingBookings ?? 0) > 0 && (
-        <span className="tb-pending-pill">{pendingBookings} pending</span>
+        <a href="/dashboard/owner/bookings" style={{ textDecoration: "none" }}>
+          <span className="tb-pending-pill">{pendingBookings} pending booking{(pendingBookings ?? 0) !== 1 ? "s" : ""}</span>
+        </a>
       )}
     </>
   );

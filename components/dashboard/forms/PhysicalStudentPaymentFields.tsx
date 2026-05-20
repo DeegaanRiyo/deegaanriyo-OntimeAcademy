@@ -42,7 +42,7 @@ export default function PhysicalStudentPaymentFields({
   mpesaRef, setMpesaRef,
 }: Props) {
   const monthly  = Number(courseMonthly) || 0;
-  const rFee     = (studentType === "new" || studentType === "online") ? (Number(regFee) || 0) : 0;
+  const rFee     = (studentType === "new" || studentType === "zoom_virtual") ? (Number(regFee) || 0) : 0;
   const totalDue = monthly + rFee;
   const paid     = method === "both"
     ? (Number(cashAmount) || 0) + (Number(mpesaAmount) || 0)
@@ -61,7 +61,7 @@ export default function PhysicalStudentPaymentFields({
             <label style={lbl}>Monthly Course Fee (KES) *</label>
             <input type="number" min="1" value={courseMonthly} onChange={(e) => setCourseMonthly(e.target.value)} placeholder="e.g. 5000" required style={inp} />
           </div>
-          {(studentType === "new" || studentType === "online") && (
+          {(studentType === "new" || studentType === "zoom_virtual") && (
             <div>
               <label style={lbl}>
                 Registration Fee (KES){studentType === "new" ? " *" : ""}

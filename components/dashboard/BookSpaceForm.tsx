@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,21 +15,21 @@ const SPACE_SETUPS: Record<string, string[]> = {
 };
 
 const schema = z.object({
-  space_id:       z.string().min(1, "Please select a space"),
-  setup:          z.string().optional(),
-  visitor_name:   z.string().min(2, "Name must be at least 2 characters"),
-  visitor_phone:  z.string().regex(/^(\+?254|0)7\d{8}$/, "Enter a valid Kenyan phone (e.g. 07XX XXX XXX)"),
-  booking_date:   z.string().min(1, "Please select a date"),
-  start_time:     z.string().min(1, "Please select a start time"),
-  end_time:       z.string().min(1, "Please select an end time"),
-  estimated_cost: z.string().optional(),
-  notes:          z.string().optional(),
+  space_id:     z.string().min(1, "Please select a space"),
+  setup:        z.string().optional(),
+  visitor_name: z.string().min(2, "Name must be at least 2 characters"),
+  visitor_phone: z.string().regex(/^(\+?254|0)7\d{8}$/, "Enter a valid Kenyan phone (e.g. 07XX XXX XXX)"),
+  booking_date: z.string().min(1, "Please select a date"),
+  start_time:   z.string().min(1, "Please select a start time"),
+  end_time:     z.string().min(1, "Please select an end time"),
+  notes:        z.string().optional(),
 }).refine(
   (d) => !d.start_time || !d.end_time || d.end_time > d.start_time,
   { message: "End time must be after start time", path: ["end_time"] }
 );
 
 type FormData = z.infer<typeof schema>;
+type PayMethod = "cash" | "mpesa" | "bank_transfer";
 
 interface Props {
   spaces: Space[];
@@ -43,30 +42,34 @@ interface Props {
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
   return (
-    <p className="text-[.7rem] text-[var(--red)] flex items-center gap-1 mt-1">
+    <p style={{ fontSize: ".7rem", color: "var(--red)", display: "flex", alignItems: "center", gap: "4px", margin: "4px 0 0" }}>
       <i className="fa-solid fa-circle-exclamation" aria-hidden="true" />
       {msg}
     </p>
   );
 }
 
-const inputCls = (hasError?: boolean) =>
-  `w-full bg-[rgba(17,17,17,.04)] border rounded-lg px-3 py-2.5 text-[var(--dark)] text-[.88rem] focus:outline-none transition-all duration-200 ${
-    hasError
-      ? "border-[var(--red)] focus:border-[var(--red)] focus:shadow-[0_0_0_3px_rgba(239,68,68,.1)]"
-      : "border-[rgba(17,17,17,.15)] focus:border-[rgba(193,68,14,.45)] focus:shadow-[0_0_0_3px_rgba(193,68,14,.08)]"
-  }`;
+const INP: React.CSSProperties = {
+  width: "100%", background: "rgba(17,17,17,.04)",
+  border: "1px solid rgba(17,17,17,.15)", borderRadius: "8px",
+  padding: "9px 12px", color: "var(--dark)", fontSize: ".88rem",
+  outline: "none", boxSizing: "border-box", transition: "border .15s",
+};
+const LBL: React.CSSProperties = {
+  display: "block", fontSize: ".62rem", fontWeight: 700,
+  textTransform: "uppercase", letterSpacing: ".1em",
+  color: "rgba(17,17,17,.4)", marginBottom: "5px",
+};
 
 export default function BookSpaceForm({ spaces, defaultSpaceId, defaultDate, onClose, onSuccess }: Props) {
-  const router = useRouter();
   const todayStr = defaultDate ?? new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
 
-  // Payment state (not part of react-hook-form since it's conditional)
-  const [collectPayment,  setCollectPayment]  = useState(false);
-  const [amountPaid,      setAmountPaid]      = useState("");
-  const [paymentMethod,   setPaymentMethod]   = useState<"cash" | "bank_transfer">("cash");
-  const [paymentRef,      setPaymentRef]      = useState("");
-  const [paymentError,    setPaymentError]    = useState<string | null>(null);
+  const [saved,         setSaved]         = useState(false);
+  const [totalCost,     setTotalCost]     = useState("");   // estimated / agreed total
+  const [amountPaid,    setAmountPaid]    = useState("");   // amount paid right now
+  const [payMethod,     setPayMethod]     = useState<PayMethod>("cash");
+  const [payRef,        setPayRef]        = useState("");
+  const [paymentError,  setPaymentError]  = useState<string | null>(null);
 
   const {
     register,
@@ -87,11 +90,10 @@ export default function BookSpaceForm({ spaces, defaultSpaceId, defaultDate, onC
   const spaceId       = watch("space_id");
   const startT        = watch("start_time");
   const endT          = watch("end_time");
-  const estimatedCost = watch("estimated_cost");
   const selectedSpace = spaces.find((s) => s.id === spaceId);
   const setups        = selectedSpace ? (SPACE_SETUPS[selectedSpace.slug] ?? []) : [];
 
-  // Duration display
+  // Duration
   let durationLabel = "";
   if (startT && endT && endT > startT) {
     const [sh, sm] = startT.split(":").map(Number);
@@ -99,20 +101,27 @@ export default function BookSpaceForm({ spaces, defaultSpaceId, defaultDate, onC
     const total = (eh * 60 + em) - (sh * 60 + sm);
     const hrs   = Math.floor(total / 60);
     const mins  = total % 60;
-    durationLabel = hrs > 0 && mins > 0 ? `${hrs}h ${mins}m` : hrs > 0 ? `${hrs} hour${hrs > 1 ? "s" : ""}` : `${mins} minutes`;
+    durationLabel = hrs > 0 && mins > 0 ? `${hrs}h ${mins}m` : hrs > 0 ? `${hrs} hr${hrs > 1 ? "s" : ""}` : `${mins} min`;
   }
 
-  // Outstanding after payment
-  const estNum     = Number(estimatedCost);
-  const paidNum    = Number(amountPaid);
-  const outstanding = collectPayment && estNum > 0 && paidNum > 0 ? estNum - paidNum : null;
+  // Balance live calc
+  const costNum    = Number(totalCost)  || 0;
+  const paidNum    = Number(amountPaid) || 0;
+  const balance    = costNum > 0 && paidNum > 0 ? costNum - paidNum : null;
+  const paidPct    = costNum > 0 && paidNum > 0 ? Math.min(100, Math.round((paidNum / costNum) * 100)) : 0;
+
+  const needsRef = payMethod === "mpesa" || payMethod === "bank_transfer";
 
   const onSubmit = async (data: FormData) => {
-    // Validate payment if collecting
-    if (collectPayment) {
+    // Validate: if amount paid is entered, it must be > 0
+    if (amountPaid) {
       const amt = Number(amountPaid);
-      if (!amountPaid || isNaN(amt) || amt <= 0) {
+      if (isNaN(amt) || amt <= 0) {
         setPaymentError("Enter a valid payment amount.");
+        return;
+      }
+      if (costNum > 0 && amt > costNum) {
+        setPaymentError("Amount paid cannot exceed the total cost.");
         return;
       }
       setPaymentError(null);
@@ -122,21 +131,21 @@ export default function BookSpaceForm({ spaces, defaultSpaceId, defaultDate, onC
       const res = await fetch("/api/receptionist/bookings", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({
-          space_id:          data.space_id,
-          visitor_name:      data.visitor_name.trim(),
-          visitor_phone:     data.visitor_phone.trim(),
-          setup:             data.setup || null,
-          booking_date:      data.booking_date,
-          start_time:        data.start_time,
-          end_time:          data.end_time,
-          notes:             data.notes?.trim() || null,
-          estimated_cost:    data.estimated_cost ? Number(data.estimated_cost) : null,
-          // Payment fields (only sent if collecting now)
-          ...(collectPayment && amountPaid ? {
-            amount_paid:        Number(amountPaid),
-            payment_method:     paymentMethod,
-            payment_reference:  paymentRef.trim() || null,
+        body: JSON.stringify({
+          space_id:       data.space_id,
+          visitor_name:   data.visitor_name.trim(),
+          visitor_phone:  data.visitor_phone.trim(),
+          setup:          data.setup || null,
+          booking_date:   data.booking_date,
+          start_time:     data.start_time,
+          end_time:       data.end_time,
+          notes:          data.notes?.trim() || null,
+          estimated_cost: costNum > 0 ? costNum : null,
+          // Payment — only if amount entered
+          ...(amountPaid && paidNum > 0 ? {
+            amount_paid:       paidNum,
+            payment_method:    payMethod,
+            payment_reference: payRef.trim() || null,
           } : {}),
         }),
       });
@@ -147,306 +156,264 @@ export default function BookSpaceForm({ spaces, defaultSpaceId, defaultDate, onC
         return;
       }
 
-      onSuccess?.();
-      router.refresh();
-      onClose();
+      setSaved(true);
+      setTimeout(() => {
+        onSuccess?.();
+        onClose();
+      }, 1200);
     } catch {
       setError("root", { message: "Network error — please try again." });
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[999] bg-[rgba(0,0,0,.7)] backdrop-blur-sm flex items-center justify-center p-5">
-      <div className="bg-[var(--dark2)] border border-[var(--border)] rounded-2xl p-8 w-full max-w-[540px] max-h-[90vh] overflow-y-auto">
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-[1.2rem] font-bold m-0">Book a Space</h2>
-            <p className="text-[.78rem] text-[var(--muted)] mt-1 m-0">Create a confirmed reservation</p>
+  // ── Success screen ────────────────────────────────────────────────────────
+  if (saved) {
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+        <div style={{ background: "#fff", borderRadius: "16px", padding: "40px 32px", width: "100%", maxWidth: "380px", textAlign: "center" }}>
+          <div style={{ fontSize: "2.4rem", color: "#16a34a", marginBottom: "12px" }}>
+            <i className="fas fa-calendar-check" />
           </div>
-          <button
-            onClick={onClose}
-            className="text-[var(--muted)] hover:text-[var(--white)] text-[1.1rem] p-1 transition-colors duration-200"
-            aria-label="Close"
-          >
-            <i className="fas fa-times" aria-hidden="true" />
+          <h2 style={{ margin: "0 0 6px", fontSize: "1.05rem", fontWeight: 800, color: "var(--dark)" }}>Booking Confirmed!</h2>
+          <p style={{ margin: 0, color: "var(--muted)", fontSize: ".82rem" }}>
+            The space has been reserved successfully.
+          </p>
+          {paidNum > 0 && balance !== null && balance > 0 && (
+            <div style={{ marginTop: "14px", display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(180,83,9,.08)", border: "1px solid rgba(180,83,9,.2)", borderRadius: "6px", padding: "6px 14px", fontSize: ".78rem", color: "#b45309", fontWeight: 700 }}>
+              <i className="fas fa-clock" />
+              KES {balance.toLocaleString()} balance outstanding
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ background: "#fff", borderRadius: "16px", width: "100%", maxWidth: "560px", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 24px 60px rgba(0,0,0,.18)" }}>
+
+        {/* ── Header ────────────────────────────────────────────── */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 22px", borderBottom: "1px solid rgba(17,17,17,.07)" }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: ".95rem", color: "var(--dark)" }}>Book a Space</div>
+            <div style={{ fontSize: ".68rem", color: "rgba(17,17,17,.35)", marginTop: "1px" }}>Create a confirmed reservation</div>
+          </div>
+          <button onClick={onClose} style={{ width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(17,17,17,.05)", border: "none", borderRadius: "6px", cursor: "pointer", color: "rgba(17,17,17,.4)", fontSize: ".78rem" }}>
+            <i className="fas fa-times" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} noValidate style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: "14px" }}>
 
-          {/* Space selector */}
-          <div>
-            <label className="text-[.68rem] font-bold uppercase tracking-[.1em] text-[var(--muted)] block mb-1.5">
-              Space
-            </label>
-            <select {...register("space_id")} className={inputCls(!!errors.space_id)}>
-              {spaces.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-            <FieldError msg={errors.space_id?.message} />
+          {/* Space + Setup */}
+          <div style={{ display: "grid", gridTemplateColumns: setups.length > 0 ? "1fr 1fr" : "1fr", gap: "12px" }}>
+            <div>
+              <label style={LBL}>Space *</label>
+              <select {...register("space_id")} style={INP}>
+                {spaces.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <FieldError msg={errors.space_id?.message} />
+            </div>
+            {setups.length > 0 && (
+              <div>
+                <label style={LBL}>Setup / Config</label>
+                <select {...register("setup")} style={INP}>
+                  <option value="">— Any —</option>
+                  {setups.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+              </div>
+            )}
           </div>
 
-          {/* Setup */}
-          {setups.length > 0 && (
-            <div>
-              <label className="text-[.68rem] font-bold uppercase tracking-[.1em] text-[var(--muted)] block mb-1.5">
-                Setup / Configuration
-              </label>
-              <select {...register("setup")} className={inputCls()}>
-                <option value="">— Select setup —</option>
-                {setups.map((opt) => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
           {/* Client name + phone */}
-          <div className="grid grid-cols-2 gap-3">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <div>
-              <label className="text-[.68rem] font-bold uppercase tracking-[.1em] text-[var(--muted)] block mb-1.5">
-                Client Name *
-              </label>
-              <input
-                type="text"
-                placeholder="Full name"
-                {...register("visitor_name")}
-                className={inputCls(!!errors.visitor_name)}
-              />
+              <label style={LBL}>Client Name *</label>
+              <input type="text" placeholder="Full name" {...register("visitor_name")} style={INP} />
               <FieldError msg={errors.visitor_name?.message} />
             </div>
             <div>
-              <label className="text-[.68rem] font-bold uppercase tracking-[.1em] text-[var(--muted)] block mb-1.5">
-                Phone *
-              </label>
-              <input
-                type="tel"
-                placeholder="07XX XXX XXX"
-                {...register("visitor_phone")}
-                className={inputCls(!!errors.visitor_phone)}
-              />
+              <label style={LBL}>Phone *</label>
+              <input type="tel" placeholder="07XX XXX XXX" {...register("visitor_phone")} style={INP} />
               <FieldError msg={errors.visitor_phone?.message} />
             </div>
           </div>
 
-          {/* Date */}
-          <div>
-            <label className="text-[.68rem] font-bold uppercase tracking-[.1em] text-[var(--muted)] block mb-1.5">
-              Date *
-            </label>
-            <input
-              type="date"
-              {...register("booking_date")}
-              className={inputCls(!!errors.booking_date)}
-            />
-            <FieldError msg={errors.booking_date?.message} />
-          </div>
-
-          {/* Start + End time */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Date + times */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
             <div>
-              <label className="text-[.68rem] font-bold uppercase tracking-[.1em] text-[var(--muted)] block mb-1.5">
-                From *
-              </label>
-              <input
-                type="time"
-                {...register("start_time")}
-                className={inputCls(!!errors.start_time)}
-              />
+              <label style={LBL}>Date *</label>
+              <input type="date" {...register("booking_date")} style={INP} />
+              <FieldError msg={errors.booking_date?.message} />
+            </div>
+            <div>
+              <label style={LBL}>From *</label>
+              <input type="time" {...register("start_time")} style={INP} />
               <FieldError msg={errors.start_time?.message} />
             </div>
             <div>
-              <label className="text-[.68rem] font-bold uppercase tracking-[.1em] text-[var(--muted)] block mb-1.5">
-                To *
-              </label>
-              <input
-                type="time"
-                {...register("end_time")}
-                className={inputCls(!!errors.end_time)}
-              />
+              <label style={LBL}>To *</label>
+              <input type="time" {...register("end_time")} style={INP} />
               <FieldError msg={errors.end_time?.message} />
             </div>
           </div>
 
-          {/* Duration preview */}
+          {/* Duration pill */}
           {durationLabel && (
-            <p className="text-[.78rem] text-[var(--teal2)] font-semibold -mt-1">
-              <i className="fas fa-clock mr-1.5" aria-hidden="true" />
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: ".75rem", fontWeight: 600, color: "var(--teal2)", marginTop: "-6px" }}>
+              <i className="fas fa-clock" style={{ fontSize: ".65rem" }} />
               Duration: {durationLabel}
-            </p>
+            </div>
           )}
 
-          {/* Estimated cost */}
-          <div>
-            <label className="text-[.68rem] font-bold uppercase tracking-[.1em] text-[var(--muted)] block mb-1.5">
-              Estimated Cost (KES)
-            </label>
-            <input
-              type="number"
-              min="0"
-              placeholder="e.g. 3000"
-              {...register("estimated_cost")}
-              className={inputCls()}
-            />
-          </div>
-
           {/* ── Payment Section ─────────────────────────────────── */}
-          <div style={{ border: "1px solid rgba(17,17,17,.1)", borderRadius: "10px", overflow: "hidden" }}>
-            {/* Toggle header */}
-            <button
-              type="button"
-              onClick={() => { setCollectPayment((v) => !v); setPaymentError(null); }}
-              style={{
-                width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-                padding: "11px 14px", background: collectPayment ? "rgba(22,163,74,.06)" : "rgba(17,17,17,.03)",
-                border: "none", cursor: "pointer",
-                borderBottom: collectPayment ? "1px solid rgba(22,163,74,.15)" : "none",
-                transition: "background .15s",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <i className="fas fa-money-bill-wave" style={{ color: collectPayment ? "#16a34a" : "var(--muted)", fontSize: ".82rem" }} />
-                <span style={{ fontSize: ".8rem", fontWeight: 700, color: collectPayment ? "#16a34a" : "var(--muted)" }}>
-                  Collect Payment Now
-                </span>
-              </div>
-              <div style={{
-                width: "36px", height: "20px", borderRadius: "10px", position: "relative",
-                background: collectPayment ? "#16a34a" : "rgba(17,17,17,.2)",
-                transition: "background .2s", flexShrink: 0,
-              }}>
-                <div style={{
-                  position: "absolute", top: "2px",
-                  left: collectPayment ? "18px" : "2px",
-                  width: "16px", height: "16px", borderRadius: "50%",
-                  background: "#fff", transition: "left .2s",
-                  boxShadow: "0 1px 3px rgba(0,0,0,.2)",
-                }} />
-              </div>
-            </button>
+          <div style={{ background: "rgba(17,17,17,.02)", border: "1px solid rgba(17,17,17,.08)", borderRadius: "10px", padding: "14px", display: "flex", flexDirection: "column", gap: "12px" }}>
 
-            {/* Payment fields */}
-            {collectPayment && (
-              <div style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "12px" }}>
-                {/* Amount */}
-                <div>
-                  <label className="text-[.68rem] font-bold uppercase tracking-[.1em] text-[var(--muted)] block mb-1.5">
-                    Amount Paid (KES) *
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    placeholder={estimatedCost ? `Max: ${Number(estimatedCost).toLocaleString()}` : "e.g. 2500"}
-                    value={amountPaid}
-                    onChange={(e) => { setAmountPaid(e.target.value); setPaymentError(null); }}
-                    className={inputCls(!!paymentError)}
-                  />
-                  {paymentError && (
-                    <p className="text-[.7rem] text-[var(--red)] flex items-center gap-1 mt-1">
-                      <i className="fa-solid fa-circle-exclamation" /> {paymentError}
-                    </p>
-                  )}
-                  {/* Outstanding preview */}
-                  {outstanding !== null && (
-                    <p style={{ fontSize: ".72rem", marginTop: "4px", fontWeight: 600,
-                      color: outstanding > 0 ? "#b45309" : "#16a34a" }}>
-                      {outstanding > 0
-                        ? `KES ${outstanding.toLocaleString()} will remain outstanding`
-                        : "Full payment — cleared"}
-                    </p>
+            <div style={{ fontSize: ".62rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".12em", color: "rgba(17,17,17,.3)", display: "flex", alignItems: "center", gap: "6px" }}>
+              <i className="fas fa-receipt" />
+              Payment
+            </div>
+
+            {/* Total cost + Amount paid side by side */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <div>
+                <label style={LBL}>Total / Agreed Cost (KES)</label>
+                <input
+                  type="number" min="0" step="1"
+                  placeholder="e.g. 3,000"
+                  value={totalCost}
+                  onChange={(e) => setTotalCost(e.target.value)}
+                  style={INP}
+                />
+                <div style={{ fontSize: ".62rem", color: "rgba(17,17,17,.3)", marginTop: "3px" }}>Full amount owed</div>
+              </div>
+              <div>
+                <label style={LBL}>Amount Paid Now (KES)</label>
+                <input
+                  type="number" min="0" step="1"
+                  placeholder={costNum > 0 ? `Up to ${costNum.toLocaleString()}` : "e.g. 1,500"}
+                  value={amountPaid}
+                  onChange={(e) => { setAmountPaid(e.target.value); setPaymentError(null); }}
+                  style={{ ...INP, borderColor: paymentError ? "var(--red)" : "rgba(17,17,17,.15)" }}
+                />
+                {paymentError
+                  ? <div style={{ fontSize: ".62rem", color: "var(--red)", marginTop: "3px" }}>{paymentError}</div>
+                  : <div style={{ fontSize: ".62rem", color: "rgba(17,17,17,.3)", marginTop: "3px" }}>Leave blank if no payment yet</div>
+                }
+              </div>
+            </div>
+
+            {/* Balance preview bar — shown when both values entered */}
+            {costNum > 0 && paidNum > 0 && (
+              <div style={{ background: "#fff", border: "1px solid rgba(17,17,17,.08)", borderRadius: "8px", padding: "10px 12px" }}>
+                {/* Progress bar */}
+                <div style={{ height: "6px", background: "rgba(17,17,17,.07)", borderRadius: "3px", overflow: "hidden", marginBottom: "8px" }}>
+                  <div style={{ height: "100%", width: `${paidPct}%`, background: balance !== null && balance <= 0 ? "#16a34a" : "#E8490F", borderRadius: "3px", transition: "width .2s" }} />
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: ".75rem" }}>
+                  <div style={{ display: "flex", gap: "14px" }}>
+                    <span style={{ color: "rgba(17,17,17,.4)" }}>
+                      Total: <strong style={{ color: "var(--dark)" }}>KES {costNum.toLocaleString()}</strong>
+                    </span>
+                    <span style={{ color: "#16a34a" }}>
+                      Paid: <strong>KES {paidNum.toLocaleString()}</strong>
+                    </span>
+                  </div>
+                  {balance !== null && balance > 0 ? (
+                    <span style={{ fontWeight: 700, color: "#b45309", background: "rgba(180,83,9,.08)", border: "1px solid rgba(180,83,9,.2)", borderRadius: "100px", padding: "2px 9px", fontSize: ".68rem" }}>
+                      KES {balance.toLocaleString()} balance
+                    </span>
+                  ) : (
+                    <span style={{ fontWeight: 700, color: "#16a34a", fontSize: ".68rem" }}>
+                      <i className="fas fa-check-circle" style={{ marginRight: "4px" }} />Fully paid
+                    </span>
                   )}
                 </div>
+              </div>
+            )}
 
-                {/* Payment method */}
+            {/* Payment method — shown only when amount is entered */}
+            {paidNum > 0 && (
+              <>
                 <div>
-                  <label className="text-[.68rem] font-bold uppercase tracking-[.1em] text-[var(--muted)] block mb-1.5">
-                    Payment Method *
-                  </label>
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    {(["cash", "bank_transfer"] as const).map((m) => (
-                      <button
-                        key={m} type="button" onClick={() => setPaymentMethod(m)}
-                        style={{
-                          flex: 1, padding: "9px 8px", borderRadius: "8px", cursor: "pointer",
-                          fontWeight: 700, fontSize: ".78rem",
-                          background: paymentMethod === m ? "rgba(22,163,74,.1)" : "rgba(17,17,17,.04)",
-                          border:     paymentMethod === m ? "1px solid rgba(22,163,74,.4)" : "1px solid rgba(17,17,17,.12)",
-                          color:      paymentMethod === m ? "#16a34a" : "var(--muted)",
-                        }}
-                      >
-                        <i className={`fas ${m === "cash" ? "fa-money-bill" : "fa-university"}`} style={{ marginRight: "6px" }} />
-                        {m === "cash" ? "Cash" : "Bank Transfer"}
-                      </button>
-                    ))}
+                  <label style={LBL}>Payment Method *</label>
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    {(["cash", "mpesa", "bank_transfer"] as const).map((m) => {
+                      const active = payMethod === m;
+                      const labels: Record<string, string> = { cash: "Cash", mpesa: "M-Pesa", bank_transfer: "Bank" };
+                      const icons:  Record<string, string> = { cash: "fa-money-bill", mpesa: "fa-mobile-alt", bank_transfer: "fa-university" };
+                      return (
+                        <button key={m} type="button" onClick={() => setPayMethod(m)} style={{
+                          flex: 1, padding: "8px 6px", borderRadius: "8px", cursor: "pointer",
+                          fontWeight: 700, fontSize: ".75rem",
+                          background: active ? "rgba(232,73,15,.1)" : "rgba(17,17,17,.03)",
+                          border:     active ? "1px solid rgba(232,73,15,.4)" : "1px solid rgba(17,17,17,.1)",
+                          color:      active ? "#E8490F" : "rgba(17,17,17,.4)",
+                          display: "flex", alignItems: "center", justifyContent: "center", gap: "5px",
+                        }}>
+                          <i className={`fas ${icons[m]}`} style={{ fontSize: ".68rem" }} />
+                          {labels[m]}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* Reference (bank only) */}
-                {paymentMethod === "bank_transfer" && (
+                {needsRef && (
                   <div>
-                    <label className="text-[.68rem] font-bold uppercase tracking-[.1em] text-[var(--muted)] block mb-1.5">
-                      Transfer Reference <span style={{ opacity: .5, fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
+                    <label style={LBL}>
+                      {payMethod === "mpesa" ? "M-Pesa" : "Transfer"} Reference
+                      <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, opacity: .5, marginLeft: "4px" }}>(optional)</span>
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. TXN12345"
-                      value={paymentRef}
-                      onChange={(e) => setPaymentRef(e.target.value)}
-                      className={inputCls()}
+                      placeholder={payMethod === "mpesa" ? "e.g. QA12BCD3E4" : "e.g. TXN12345"}
+                      value={payRef}
+                      onChange={(e) => setPayRef(e.target.value)}
+                      style={INP}
                     />
                   </div>
                 )}
-              </div>
+              </>
             )}
           </div>
 
           {/* Notes */}
           <div>
-            <label className="text-[.68rem] font-bold uppercase tracking-[.1em] text-[var(--muted)] block mb-1.5">
-              Notes (optional)
-            </label>
+            <label style={LBL}>Notes (optional)</label>
             <textarea
               {...register("notes")}
-              placeholder="Any special requirements..."
+              placeholder="Any special requirements…"
               rows={2}
-              className={`${inputCls()} resize-none`}
+              style={{ ...INP, height: "auto", padding: "8px 12px", resize: "vertical" }}
             />
           </div>
 
           {/* API error */}
           {errors.root && (
-            <div className="bg-[rgba(239,68,68,.1)] border border-[rgba(239,68,68,.3)] rounded-lg px-3.5 py-2.5 text-[#f87171] text-[.82rem] flex items-center gap-2">
-              <i className="fas fa-exclamation-triangle" aria-hidden="true" />
+            <div style={{ background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.25)", borderRadius: "8px", padding: "10px 14px", color: "#dc2626", fontSize: ".82rem", display: "flex", alignItems: "center", gap: "8px" }}>
+              <i className="fas fa-exclamation-triangle" />
               {errors.root.message}
             </div>
           )}
 
           {/* Actions */}
-          <div className="flex gap-3 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-[11px] bg-transparent border border-[var(--border)] rounded-lg text-[var(--muted)] text-[.88rem] hover:border-[rgba(193,68,14,.3)] hover:text-[var(--white)] transition-all duration-200 cursor-pointer"
-            >
+          <div style={{ display: "flex", gap: "10px", paddingTop: "2px" }}>
+            <button type="button" onClick={onClose} style={{ flex: 1, padding: "11px", background: "transparent", border: "1px solid rgba(17,17,17,.15)", borderRadius: "8px", color: "rgba(17,17,17,.5)", fontSize: ".88rem", fontWeight: 600, cursor: "pointer" }}>
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-[2] py-[11px] rounded-lg text-white text-[.88rem] font-bold border-none cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed transition-opacity duration-200 gradient-brand"
-            >
+            <button type="submit" disabled={isSubmitting} style={{ flex: 2, padding: "11px", background: "#E8490F", border: "none", borderRadius: "8px", color: "#fff", fontSize: ".88rem", fontWeight: 800, cursor: isSubmitting ? "not-allowed" : "pointer", opacity: isSubmitting ? .7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
               {isSubmitting ? (
-                <><i className="fas fa-spinner fa-spin mr-2" aria-hidden="true" />Creating...</>
-              ) : collectPayment ? (
-                <><i className="fas fa-money-bill-wave mr-2" aria-hidden="true" />Confirm & Record Payment</>
+                <><i className="fas fa-spinner fa-spin" />Creating…</>
+              ) : paidNum > 0 ? (
+                <><i className="fas fa-money-bill-wave" />Confirm & Record Payment</>
               ) : (
-                <><i className="fas fa-calendar-check mr-2" aria-hidden="true" />Confirm Booking</>
+                <><i className="fas fa-calendar-check" />Confirm Booking</>
               )}
             </button>
           </div>
+
         </form>
       </div>
     </div>

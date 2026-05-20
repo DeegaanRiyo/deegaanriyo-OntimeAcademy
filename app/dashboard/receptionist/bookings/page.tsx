@@ -15,14 +15,9 @@ export default async function ReceptionistBookingsPage() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const today   = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
-  const nowTime = new Date().toLocaleTimeString("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit", hour12: false });
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
 
-  // Get last 30 days of bookings
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const fromDate = thirtyDaysAgo.toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
-
+  // Only confirmed bookings from today onwards
   const { data: bookings } = await service
     .from("bookings")
     .select(`
@@ -32,8 +27,9 @@ export default async function ReceptionistBookingsPage() {
       spaces(id, name, slug),
       walk_in_payments(amount)
     `)
-    .gte("booking_date", fromDate)
-    .order("booking_date", { ascending: false })
+    .eq("status", "confirmed")
+    .gte("booking_date", today)
+    .order("booking_date", { ascending: true })
     .order("start_time");
 
   const { data: allSpaces } = await service
@@ -52,7 +48,6 @@ export default async function ReceptionistBookingsPage() {
       bookings={normalised}
       allSpaces={allSpaces ?? []}
       today={today}
-      nowTime={nowTime}
     />
   );
 }

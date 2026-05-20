@@ -383,19 +383,19 @@ function RegisterStudentForm() {
       {/* Student Category */}
       <Field label="Student Category" required>
         <div style={{ display: "flex", gap: "10px" }}>
-          {(["new", "returning", "online"] as PhysicalStudentType[]).map((type) => (
+          {(["new", "current_old", "zoom_virtual"] as PhysicalStudentType[]).map((type) => (
             <label key={type} style={{
               flex: 1, display: "flex", alignItems: "center", gap: "8px",
               padding: "10px 14px", borderRadius: "8px", cursor: "pointer",
               border: studentType === type
-                ? `1.5px solid ${type === "online" ? "#7c3aed" : "var(--teal2)"}`
+                ? `1.5px solid ${type === "zoom_virtual" ? "#7c3aed" : "var(--teal2)"}`
                 : "1px solid rgba(17,17,17,.15)",
               background: studentType === type
-                ? (type === "online" ? "rgba(124,58,237,.06)" : "rgba(193,68,14,.06)")
+                ? (type === "zoom_virtual" ? "rgba(124,58,237,.06)" : "rgba(193,68,14,.06)")
                 : "rgba(17,17,17,.04)",
               fontSize: ".85rem", fontWeight: studentType === type ? 700 : 400,
               color: studentType === type
-                ? (type === "online" ? "#7c3aed" : "var(--teal2)")
+                ? (type === "zoom_virtual" ? "#7c3aed" : "var(--teal2)")
                 : "var(--muted)",
               transition: "all .15s",
             }}>
@@ -403,14 +403,14 @@ function RegisterStudentForm() {
                 type="radio" name="stype" value={type}
                 checked={studentType === type}
                 onChange={() => setStudentType(type)}
-                style={{ accentColor: type === "online" ? "#7c3aed" : "var(--teal2)" }}
+                style={{ accentColor: type === "zoom_virtual" ? "#7c3aed" : "var(--teal2)" }}
               />
-              <i className={`fas ${type === "new" ? "fa-user-plus" : type === "returning" ? "fa-user-check" : "fa-wifi"}`} />
-              {type === "new" ? "New Student" : type === "returning" ? "Current / Old" : "Online Student"}
+              <i className={`fas ${type === "new" ? "fa-user-plus" : type === "current_old" ? "fa-user-check" : "fa-video"}`} />
+              {type === "new" ? "New Student" : type === "current_old" ? "Current / Old" : "Zoom / Virtual"}
             </label>
           ))}
         </div>
-        {studentType === "returning" && (
+        {studentType === "current_old" && (
           <div style={{ marginTop: "8px", fontSize: ".75rem", color: "var(--muted)",
             background: "rgba(17,17,17,.03)", borderRadius: "6px", padding: "7px 10px",
             border: "1px solid rgba(17,17,17,.08)" }}>
@@ -418,12 +418,12 @@ function RegisterStudentForm() {
             Student was enrolled before the system — no registration fee applies.
           </div>
         )}
-        {studentType === "online" && (
+        {studentType === "zoom_virtual" && (
           <div style={{ marginTop: "8px", fontSize: ".75rem", color: "#7c3aed",
             background: "rgba(124,58,237,.05)", borderRadius: "6px", padding: "7px 10px",
             border: "1px solid rgba(124,58,237,.2)" }}>
-            <i className="fas fa-wifi" style={{ marginRight: "5px" }} />
-            Online student — attends classes remotely. Registration fee is optional.
+            <i className="fas fa-video" style={{ marginRight: "5px" }} />
+            Zoom / Virtual — attends live classes remotely. Registration fee is optional.
           </div>
         )}
       </Field>

@@ -127,18 +127,6 @@ export default async function SpaceDetailPage({
 
   if (error || !space) notFound();
 
-  // Get logged-in user and their profile (for pre-filling the booking form)
-  const { data: { user } } = await supabase.auth.getUser();
-  let userProfile: { full_name: string; email: string; phone: string | null } | null = null;
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("full_name, email, phone")
-      .eq("id", user.id)
-      .single();
-    if (profile) userProfile = profile;
-  }
-
   const sp            = space as Space;
   const heroImage     = sp.photos?.[0] ?? placeholderImages[sp.slug] ?? "";
   const pills         = pillsMap[sp.slug] ?? [];
@@ -237,7 +225,7 @@ export default async function SpaceDetailPage({
             </div>
 
             {/* Availability schedule */}
-            <SpaceScheduleClient space={sp} user={userProfile} />
+            <SpaceScheduleClient space={sp} user={null} />
 
             {/* Photo gallery */}
             <div>
@@ -294,7 +282,7 @@ export default async function SpaceDetailPage({
 
               {/* Booking form */}
               <div className="px-5 py-4">
-                <BookingForm space={sp} user={userProfile} />
+                <BookingForm space={sp} />
               </div>
 
               {/* Footer note */}
