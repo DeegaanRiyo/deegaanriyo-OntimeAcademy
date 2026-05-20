@@ -72,8 +72,8 @@ export default async function OwnerDashboardPage() {
     // This month: online platform payments
     admin.from("payments").select("id, amount").eq("status", "paid").gte("created_at", monthStart),
 
-    // All-time: student regs for trend
-    admin.from("student_registrations").select("id, amount, created_at").order("created_at", { ascending: false }),
+    // All-time: student regs for trend + counts
+    admin.from("student_registrations").select("id, student_type, amount, created_at").order("created_at", { ascending: false }),
 
     // All-time: online pays for trend
     admin.from("payments").select("id, amount, created_at").eq("status", "paid").order("created_at", { ascending: false }),
@@ -93,13 +93,10 @@ export default async function OwnerDashboardPage() {
     // Pending bookings
     admin.from("bookings").select("id").eq("status", "pending"),
 
-    // Recent 8 student registrations with recorder name
+    // Recent 8 student registrations
     admin
       .from("student_registrations")
-      .select(`
-        id, student_type, customer_name, customer_phone, amount, method, created_at,
-        recorder:profiles!student_registrations_recorded_by_fkey(full_name)
-      `)
+      .select("id, student_type, customer_name, customer_phone, amount, method, created_at, recorded_by")
       .order("created_at", { ascending: false })
       .limit(8),
 
@@ -180,7 +177,24 @@ export default async function OwnerDashboardPage() {
     { label: "Online Courses",  amount: onlineTotal, color: "#8b5cf6",     pct: grandTotal > 0 ? Math.round((onlineTotal / grandTotal) * 100) : 0 },
   ];
 
-  const recentRegs = (recentRegsRaw ?? []) as any[];
+  const recentRegsBase = (recentRegsRaw ?? []) as any[];
+
+  // Fetch recorder names for recent regs (avoid named FK which may not exist in DB)
+  const recorderIds = [...new Set(recentRegsBase.map((r: any) => r.recorded_by).filter(Boolean))];
+  let recorderMap: Record<string, string> = {};
+  if (recorderIds.length > 0) {
+    const { data: recorderProfiles } = await admin
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", recorderIds);
+    for (const p of (recorderProfiles ?? [])) {
+      recorderMap[p.id] = p.full_name;
+    }
+  }
+  const recentRegs = recentRegsBase.map((r: any) => ({
+    ...r,
+    recorder: { full_name: recorderMap[r.recorded_by] ?? null },
+  }));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>

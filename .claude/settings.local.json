@@ -12,7 +12,8 @@
       "Read(//c/Users/hp/Documents//**)",
       "Read(//c/Users/hp//**)",
       "Bash(npm run *)",
-      "Bash(npx next *)"
+      "Bash(npx next *)",
+      "Bash(npm install *)"
     ]
   }
 }
