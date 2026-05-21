@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
       customer_name:       string;
       customer_phone:      string;
       customer_email?:     string;
+      course_name?:        string;
       course_fee_monthly?: number;
       registration_fee?:   number;
       total_due?:          number;
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest) {
 
     const {
       student_type, customer_name, customer_phone, customer_email,
+      course_name,
       course_fee_monthly, registration_fee, total_due,
       amount, method, reference, notes,
     } = body;
@@ -58,6 +60,7 @@ export async function POST(req: NextRequest) {
         customer_name,
         customer_phone,
         customer_email:      customer_email      ?? null,
+        course_name:         course_name         ?? null,
         course_fee_monthly:  course_fee_monthly  ?? null,
         registration_fee:    registration_fee    ?? null,
         total_due:           total_due           ?? null,

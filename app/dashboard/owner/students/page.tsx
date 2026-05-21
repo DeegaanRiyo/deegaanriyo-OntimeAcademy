@@ -25,6 +25,7 @@ export default async function OwnerStudentsPage() {
       .from("student_registrations")
       .select(`
         id, student_type, customer_name, customer_phone, customer_email,
+        course_name,
         course_fee_monthly, registration_fee, total_due,
         amount, method, reference, notes, recorded_by, created_at,
         recorder:profiles!student_registrations_recorded_by_fkey(full_name)
@@ -74,6 +75,7 @@ export default async function OwnerStudentsPage() {
     name:                r.customer_name  ?? "—",
     phone:               r.customer_phone ?? "—",
     email:               r.customer_email ?? null,
+    course_name:         r.course_name    ?? null,
     course_fee_monthly:  r.course_fee_monthly  ?? null,
     registration_fee:    r.registration_fee    ?? null,
     total_due:           r.total_due            ?? null,

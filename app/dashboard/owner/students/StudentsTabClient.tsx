@@ -17,6 +17,7 @@ export type PhysicalStudent = {
   name:                string;
   phone:               string;
   email:               string | null;
+  course_name:         string | null;
   course_fee_monthly:  number | null;
   registration_fee:    number | null;
   total_due:           number | null;
@@ -158,6 +159,223 @@ function DeleteModal({ student, onClose, onDeleted }: {
   );
 }
 
+// ─── Edit modal (full) ────────────────────────────────────────────────────────
+
+const F_INP: React.CSSProperties = {
+  width: "100%", height: "34px", background: "#fff",
+  border: "1px solid rgba(17,17,17,.12)", borderRadius: "6px",
+  padding: "0 10px", color: "var(--dark)", fontSize: ".8rem",
+  outline: "none", boxSizing: "border-box",
+};
+const F_LBL: React.CSSProperties = {
+  display: "block", fontSize: ".58rem", fontWeight: 700,
+  textTransform: "uppercase", letterSpacing: ".1em",
+  color: "rgba(17,17,17,.35)", marginBottom: "3px",
+};
+
+type PayMethod = "cash" | "mpesa" | "bank_transfer" | "both";
+
+function EditModal({ student, onClose, onSaved }: {
+  student:  PhysicalStudent;
+  onClose:  () => void;
+  onSaved:  (updated: Partial<PhysicalStudent>) => void;
+}) {
+  const [studentType, setStudentType] = useState(student.student_type);
+  const [name,        setName]        = useState(student.name);
+  const [phone,       setPhone]       = useState(student.phone);
+  const [email,       setEmail]       = useState(student.email ?? "");
+  const [courseName,  setCourseName]  = useState(student.course_name ?? "");
+  const [courseFee,   setCourseFee]   = useState(student.course_fee_monthly?.toString() ?? "");
+  const [regFee,      setRegFee]      = useState(student.registration_fee?.toString() ?? "");
+  const [totalDue,    setTotalDue]    = useState(student.total_due?.toString() ?? "");
+  const [amount,      setAmount]      = useState(student.amount.toString());
+  const [method,      setMethod]      = useState<PayMethod>(student.method as PayMethod ?? "cash");
+  const [reference,   setReference]   = useState(student.reference ?? "");
+  const [notes,       setNotes]       = useState(student.notes ?? "");
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState<string | null>(null);
+
+  const showRef = method === "mpesa" || method === "bank_transfer" || method === "both";
+
+  const TYPES: { v: "new" | "current_old" | "zoom_virtual"; label: string }[] = [
+    { v: "new",          label: "New"          },
+    { v: "current_old",  label: "Current / Old"},
+    { v: "zoom_virtual", label: "Zoom / Virtual"},
+  ];
+  const METHODS: { v: PayMethod; label: string }[] = [
+    { v: "cash",          label: "Cash"        },
+    { v: "mpesa",         label: "M-Pesa"      },
+    { v: "bank_transfer", label: "Bank"        },
+    { v: "both",          label: "Cash+M-Pesa" },
+  ];
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true); setError(null);
+    const payload = {
+      student_type:        studentType,
+      customer_name:       name,
+      customer_phone:      phone,
+      customer_email:      email || null,
+      course_name:         courseName.trim() || null,
+      course_fee_monthly:  courseFee  ? Number(courseFee)  : null,
+      registration_fee:    regFee     ? Number(regFee)     : null,
+      total_due:           totalDue   ? Number(totalDue)   : null,
+      amount:              Number(amount),
+      method,
+      reference:           reference || null,
+      notes:               notes     || null,
+    };
+    try {
+      const res  = await fetch(`/api/owner/students/${student.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to save");
+      onSaved({
+        student_type:       payload.student_type,
+        name:               payload.customer_name,
+        phone:              payload.customer_phone,
+        email:              payload.customer_email,
+        course_name:        payload.course_name,
+        course_fee_monthly: payload.course_fee_monthly,
+        registration_fee:   payload.registration_fee,
+        total_due:          payload.total_due,
+        amount:             payload.amount,
+        method:             payload.method,
+        reference:          payload.reference,
+        notes:              payload.notes,
+      });
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 95, padding: 16 }} onClick={onClose}>
+      <div style={{ maxWidth: 520, width: "100%", maxHeight: "92vh", overflowY: "auto", background: "#fff", borderRadius: 14, boxShadow: "0 24px 60px rgba(0,0,0,.18)" }} onClick={(e) => e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(17,17,17,.06)" }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: ".92rem", color: "var(--dark)" }}>Edit Student</div>
+            <div style={{ fontSize: ".68rem", color: "rgba(17,17,17,.35)", marginTop: 1 }}>{student.name}</div>
+          </div>
+          <button onClick={onClose} style={{ width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(17,17,17,.05)", border: "none", borderRadius: 5, cursor: "pointer", color: "rgba(17,17,17,.4)", fontSize: ".75rem" }}>
+            <i className="fas fa-times" />
+          </button>
+        </div>
+
+        <form onSubmit={save} style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+          {error && (
+            <div style={{ background: "rgba(220,38,38,.05)", border: "1px solid rgba(220,38,38,.15)", borderRadius: 6, padding: "8px 12px", color: "#dc2626", fontSize: ".75rem" }}>{error}</div>
+          )}
+
+          {/* Student type */}
+          <div>
+            <label style={F_LBL}>Student Category</label>
+            <div style={{ display: "flex", background: "rgba(17,17,17,.04)", borderRadius: 6, padding: 2, gap: 1 }}>
+              {TYPES.map(({ v, label }) => (
+                <button key={v} type="button" onClick={() => setStudentType(v)}
+                  style={{ flex: 1, height: 30, borderRadius: 5, border: "none", cursor: "pointer", fontSize: ".72rem", fontWeight: studentType === v ? 700 : 500, background: studentType === v ? "#fff" : "transparent", color: studentType === v ? "#E8490F" : "rgba(17,17,17,.4)", boxShadow: studentType === v ? "0 1px 3px rgba(0,0,0,.08)" : "none", transition: "all .12s" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Name / Phone / Email */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ gridColumn: "span 2" }}>
+              <label style={F_LBL}>Full Name *</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} required style={F_INP} />
+            </div>
+            <div>
+              <label style={F_LBL}>Phone *</label>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} required style={F_INP} />
+            </div>
+            <div>
+              <label style={F_LBL}>Email</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={F_INP} />
+            </div>
+          </div>
+
+          {/* Course */}
+          <div>
+            <label style={F_LBL}>Course Enrolled</label>
+            <input value={courseName} onChange={(e) => setCourseName(e.target.value)} placeholder="e.g. Arabic, Tajweed, Quran…" style={F_INP} />
+          </div>
+
+          {/* Fees */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <div>
+              <label style={F_LBL}>Monthly Fee (KES)</label>
+              <input type="number" min="0" value={courseFee} onChange={(e) => setCourseFee(e.target.value)} style={F_INP} />
+            </div>
+            <div>
+              <label style={F_LBL}>Reg Fee (KES)</label>
+              <input type="number" min="0" value={regFee} onChange={(e) => setRegFee(e.target.value)} style={F_INP} />
+            </div>
+            <div>
+              <label style={F_LBL}>Total Due (KES)</label>
+              <input type="number" min="0" value={totalDue} onChange={(e) => setTotalDue(e.target.value)} style={F_INP} />
+            </div>
+          </div>
+
+          {/* Amount paid */}
+          <div>
+            <label style={F_LBL}>Amount Paid (KES) *</label>
+            <input type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} required style={F_INP} />
+          </div>
+
+          {/* Payment method */}
+          <div>
+            <label style={F_LBL}>Payment Method *</label>
+            <div style={{ display: "flex", gap: 4 }}>
+              {METHODS.map(({ v, label }) => (
+                <button key={v} type="button" onClick={() => setMethod(v)}
+                  style={{ flex: 1, height: 30, borderRadius: 6, border: method === v ? "none" : "1px solid rgba(17,17,17,.12)", background: method === v ? "#E8490F" : "transparent", color: method === v ? "#fff" : "rgba(17,17,17,.45)", fontWeight: method === v ? 700 : 500, fontSize: ".7rem", cursor: "pointer", transition: "all .12s" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Reference */}
+          {showRef && (
+            <div>
+              <label style={F_LBL}>Reference</label>
+              <input value={reference} onChange={(e) => setReference(e.target.value)} style={F_INP} />
+            </div>
+          )}
+
+          {/* Notes */}
+          <div>
+            <label style={F_LBL}>Notes</label>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
+              style={{ ...F_INP, height: "auto", padding: "6px 10px", resize: "vertical", fontSize: ".75rem" }} />
+          </div>
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="submit" disabled={loading}
+              style={{ flex: 1, height: 40, background: loading ? "rgba(232,73,15,.5)" : "#E8490F", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, fontSize: ".84rem", cursor: loading ? "not-allowed" : "pointer" }}>
+              {loading ? "Saving…" : "Save Changes"}
+            </button>
+            <button type="button" onClick={onClose}
+              style={{ flex: 1, height: 40, background: "rgba(17,17,17,.06)", border: "none", borderRadius: 8, fontWeight: 700, fontSize: ".84rem", color: "var(--dark)", cursor: "pointer" }}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ─── Resolve flag inline button ───────────────────────────────────────────────
 
 function ResolveFlag({ flagId, onResolved }: { flagId: string; onResolved: () => void }) {
@@ -191,13 +409,18 @@ const TDm: React.CSSProperties = {
 // ─── Physical student table ───────────────────────────────────────────────────
 
 function PhysicalTable({ students, accentColor }: { students: PhysicalStudent[]; accentColor: string }) {
+  const [rows,          setRows]          = useState<PhysicalStudent[]>(students);
   const [deletedIds,    setDeletedIds]    = useState<Set<string>>(new Set());
   const [deleteTarget,  setDeleteTarget]  = useState<PhysicalStudent | null>(null);
+  const [editTarget,    setEditTarget]    = useState<PhysicalStudent | null>(null);
   const [resolvedFlags, setResolvedFlags] = useState<Set<string>>(new Set());
   const [expandedFlags, setExpandedFlags] = useState<Set<string>>(new Set());
   const [hoveredRow,    setHoveredRow]    = useState<string | null>(null);
 
-  const visible = students.filter((s) => !deletedIds.has(s.id));
+  // keep rows in sync when parent re-filters
+  React.useEffect(() => { setRows(students); }, [students]);
+
+  const visible = rows.filter((s) => !deletedIds.has(s.id));
 
   if (visible.length === 0) {
     return (
@@ -217,11 +440,22 @@ function PhysicalTable({ students, accentColor }: { students: PhysicalStudent[];
           onDeleted={(id) => setDeletedIds((p) => new Set(p).add(id))}
         />
       )}
+      {editTarget && (
+        <EditModal
+          student={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSaved={(updated) => {
+            setRows((prev) => prev.map((s) => s.id === editTarget.id ? { ...s, ...updated } : s));
+            setEditTarget(null);
+          }}
+        />
+      )}
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
               <th style={TH}>Student</th>
+              <th style={TH}>Course</th>
               <th style={TH}>Phone</th>
               <th style={TH}>Email</th>
               <th style={TH}>Monthly Fee</th>
@@ -273,6 +507,13 @@ function PhysicalTable({ students, accentColor }: { students: PhysicalStudent[];
                           )}
                         </div>
                       </div>
+                    </td>
+
+                    {/* Course */}
+                    <td style={TDm}>
+                      {s.course_name
+                        ? <span style={{ fontWeight: 600, color: "var(--dark)" }}>{s.course_name}</span>
+                        : <span style={{ color: "rgba(17,17,17,.22)" }}>—</span>}
                     </td>
 
                     {/* Phone */}
@@ -347,20 +588,29 @@ function PhysicalTable({ students, accentColor }: { students: PhysicalStudent[];
 
                     {/* Actions */}
                     <td style={{ ...TD, textAlign: "right", paddingRight: 10 }}>
-                      <button
-                        onClick={() => setDeleteTarget(s)}
-                        title="Remove record"
-                        style={{ width: 28, height: 28, background: "#f3f4f6", border: "none", borderRadius: 6, cursor: "pointer", color: "#ef4444", fontSize: ".6rem" }}
-                      >
-                        <i className="fas fa-trash" />
-                      </button>
+                      <div style={{ display: "inline-flex", gap: 4 }}>
+                        <button
+                          onClick={() => setEditTarget(s)}
+                          title="Edit record"
+                          style={{ width: 28, height: 28, background: "#f3f4f6", border: "none", borderRadius: 6, cursor: "pointer", color: "#6b7280", fontSize: ".6rem" }}
+                        >
+                          <i className="fas fa-pencil-alt" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(s)}
+                          title="Remove record"
+                          style={{ width: 28, height: 28, background: "#f3f4f6", border: "none", borderRadius: 6, cursor: "pointer", color: "#ef4444", fontSize: ".6rem" }}
+                        >
+                          <i className="fas fa-trash" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
 
                   {/* Inline flag panel */}
                   {hasFlagOpen && isExpanded && (
                     <tr style={{ borderBottom: "1px solid rgba(17,17,17,.045)", borderLeft: "2px solid rgba(220,38,38,.3)", background: "rgba(220,38,38,.018)" }}>
-                      <td colSpan={12} style={{ padding: "0 14px 10px 54px" }}>
+                      <td colSpan={13} style={{ padding: "0 14px 10px 54px" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           {visFlags.map((f) => (
                             <div key={f.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "8px 12px", background: "rgba(220,38,38,.05)", border: "1px solid rgba(220,38,38,.12)", borderRadius: 6 }}>

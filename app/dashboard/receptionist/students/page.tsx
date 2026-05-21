@@ -14,6 +14,7 @@ type Registration = {
   customer_phone:      string;
   customer_email:      string | null;
   profile_id:          string | null;
+  course_name:         string | null;
   course_fee_monthly:  number | null;
   registration_fee:    number | null;
   total_due:           number | null;
@@ -26,6 +27,7 @@ type Registration = {
   recorder_full_name:  string | null;
   recorder_role:       string | null;
 };
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -136,6 +138,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
   const [fullName,     setFullName]     = useState("");
   const [phone,        setPhone]        = useState("");
   const [email,        setEmail]        = useState("");
+  const [courseName,   setCourseName]   = useState("");
   const [courseFee,    setCourseFee]    = useState("");   // monthly course fee
   const [regFee,       setRegFee]       = useState("");   // one-time registration fee (new only)
   const [amountPaid,   setAmountPaid]   = useState("");   // amount paid right now
@@ -162,7 +165,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
   const balanceLabel  = balance <= 0  ? "Fully paid"            : balance < totalDue ? `KES ${balance.toLocaleString()} balance outstanding` : `KES ${balance.toLocaleString()} balance outstanding`;
 
   function reset() {
-    setFullName(""); setPhone(""); setEmail("");
+    setFullName(""); setPhone(""); setEmail(""); setCourseName("");
     setCourseFee(""); setRegFee(""); setAmountPaid("");
     setMethod("cash"); setReference(""); setNotes("");
     setStudentType("new");
@@ -184,6 +187,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
           customer_name:       fullName,
           customer_phone:      phone,
           customer_email:      email      || undefined,
+          course_name:         courseName || undefined,
           course_fee_monthly:  monthly    || undefined,
           registration_fee:    regF > 0   ? regF     : undefined,
           total_due:           totalDue   > 0 ? totalDue : undefined,
@@ -292,6 +296,17 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
                   <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ahmed@email.com" style={F_INP} />
                 </div>
               </div>
+            </div>
+
+            {/* Course enrolled */}
+            <div>
+              <label style={F_LBL}>Course Enrolled</label>
+              <input
+                value={courseName}
+                onChange={(e) => setCourseName(e.target.value)}
+                placeholder="e.g. Arabic, Tajweed, Quran…"
+                style={F_INP}
+              />
             </div>
 
             {/* Fee breakdown */}
@@ -517,11 +532,84 @@ function CategoryCard({ icon, label, desc, count, color, active, loading, onClic
   );
 }
 
+// ─── CourseEditModal ──────────────────────────────────────────────────────────
+
+function CourseEditModal({ reg, onClose, onSaved }: {
+  reg:     Registration;
+  onClose: () => void;
+  onSaved: (id: string, courseName: string) => void;
+}) {
+  const [value,   setValue]   = useState(reg.course_name ?? "");
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true); setError(null);
+    try {
+      const res  = await fetch(`/api/receptionist/students/${reg.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ course_name: value.trim() || null }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to save");
+      onSaved(reg.id, value.trim());
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70, padding: 16 }} onClick={onClose}>
+      <div style={{ maxWidth: 380, width: "100%", background: "#fff", borderRadius: 12, boxShadow: "0 20px 50px rgba(0,0,0,.15)" }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", borderBottom: "1px solid rgba(17,17,17,.06)" }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: ".88rem", color: "var(--dark)" }}>Edit Course</div>
+            <div style={{ fontSize: ".68rem", color: "rgba(17,17,17,.35)", marginTop: 1 }}>{reg.customer_name}</div>
+          </div>
+          <button onClick={onClose} style={{ width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(17,17,17,.05)", border: "none", borderRadius: 5, cursor: "pointer", color: "rgba(17,17,17,.4)", fontSize: ".75rem" }}>
+            <i className="fas fa-times" />
+          </button>
+        </div>
+        <form onSubmit={save} style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
+          {error && (
+            <div style={{ background: "rgba(220,38,38,.05)", border: "1px solid rgba(220,38,38,.15)", borderRadius: 6, padding: "8px 12px", color: "#dc2626", fontSize: ".75rem" }}>{error}</div>
+          )}
+          <div>
+            <label style={F_LBL}>Course Enrolled</label>
+            <input
+              autoFocus
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="e.g. Arabic, Tajweed, Quran…"
+              style={F_INP}
+            />
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="submit" disabled={loading}
+              style={{ flex: 1, height: 38, background: loading ? "rgba(232,73,15,.5)" : "#E8490F", color: "#fff", border: "none", borderRadius: 7, fontWeight: 700, fontSize: ".8rem", cursor: loading ? "not-allowed" : "pointer" }}>
+              {loading ? "Saving…" : "Save"}
+            </button>
+            <button type="button" onClick={onClose}
+              style={{ flex: 1, height: 38, background: "rgba(17,17,17,.05)", border: "none", borderRadius: 7, fontWeight: 700, fontSize: ".8rem", color: "var(--dark)", cursor: "pointer" }}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ─── RegistrationTable ────────────────────────────────────────────────────────
 
-function RegistrationTable({ registrations, onFlag }: {
+function RegistrationTable({ registrations, onFlag, onEdit }: {
   registrations: Registration[];
   onFlag: (r: Registration) => void;
+  onEdit: (r: Registration) => void;
 }) {
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
 
@@ -534,6 +622,7 @@ function RegistrationTable({ registrations, onFlag }: {
           <thead>
             <tr style={{ borderBottom: "1px solid rgba(17,17,17,.08)" }}>
               <th style={TH}>Student</th>
+              <th style={TH}>Course</th>
               <th style={TH}>Phone</th>
               <th style={TH}>Monthly Fee</th>
               <th style={TH}>Reg Fee</th>
@@ -569,6 +658,13 @@ function RegistrationTable({ registrations, onFlag }: {
                       </div>
                       <span style={{ fontWeight: 600, color: "#111827", fontSize: ".8rem", whiteSpace: "nowrap" }}>{r.customer_name}</span>
                     </div>
+                  </td>
+
+                  {/* Course */}
+                  <td style={TD_M}>
+                    {r.course_name
+                      ? <span style={{ fontWeight: 600, color: "var(--dark)" }}>{r.course_name}</span>
+                      : <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
                   </td>
 
                   <td style={TD_M}>{r.customer_phone}</td>
@@ -639,10 +735,16 @@ function RegistrationTable({ registrations, onFlag }: {
 
                   {/* Actions */}
                   <td style={{ ...TD, textAlign: "right", paddingRight: "10px" }}>
-                    <button onClick={() => onFlag(r)} title="Flag for correction"
-                      style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6", border: "none", borderRadius: "6px", cursor: "pointer", color: "#EF4444", fontSize: ".65rem", transition: "all .12s" }}>
-                      <i className="fas fa-flag" />
-                    </button>
+                    <div style={{ display: "inline-flex", gap: 4 }}>
+                      <button onClick={() => onEdit(r)} title="Edit course"
+                        style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6", border: "none", borderRadius: "6px", cursor: "pointer", color: "#6B7280", fontSize: ".65rem", transition: "all .12s" }}>
+                        <i className="fas fa-pencil-alt" />
+                      </button>
+                      <button onClick={() => onFlag(r)} title="Flag for correction"
+                        style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6", border: "none", borderRadius: "6px", cursor: "pointer", color: "#EF4444", fontSize: ".65rem", transition: "all .12s" }}>
+                        <i className="fas fa-flag" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -663,6 +765,7 @@ export default function StudentsPage() {
   const [activeCard,    setActiveCard]    = useState<string | null>(null);
   const [showReg,       setShowReg]       = useState(false);
   const [flagTarget,    setFlagTarget]    = useState<Registration | null>(null);
+  const [editTarget,    setEditTarget]    = useState<Registration | null>(null);
 
   function load() {
     setLoading(true);
@@ -777,7 +880,7 @@ export default function StudentsPage() {
             {search ? `No results for "${search}"` : `No ${activeCategory?.label} registrations this month.`}
           </div>
         ) : (
-          <RegistrationTable registrations={displayRegs} onFlag={setFlagTarget} />
+          <RegistrationTable registrations={displayRegs} onFlag={setFlagTarget} onEdit={setEditTarget} />
         )
       )}
 
@@ -791,6 +894,17 @@ export default function StudentsPage() {
 
       {showReg    && <RegisterModal onClose={() => setShowReg(false)} onRegistered={load} />}
       {flagTarget && <FlagModal reg={flagTarget} onClose={() => setFlagTarget(null)} onDone={() => setFlagTarget(null)} />}
+      {editTarget && (
+        <CourseEditModal
+          reg={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSaved={(id, courseName) => {
+            setRegistrations((prev) =>
+              prev.map((r) => r.id === id ? { ...r, course_name: courseName || null } : r)
+            );
+          }}
+        />
+      )}
     </div>
   );
 }
