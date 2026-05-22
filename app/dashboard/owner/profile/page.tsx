@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import ChangePasswordForm from "@/components/dashboard/ChangePasswordForm";
+import ChangeNameForm from "@/components/dashboard/ChangeNameForm";
 import SpaceSettingsForm from "@/components/dashboard/SpaceSettingsForm";
 import EmptyState from "@/components/dashboard/EmptyState";
 import type { Space } from "@/types";
@@ -97,6 +98,16 @@ export default async function OwnerProfilePage() {
               <div style={{ fontSize: ".88rem", color: "var(--dark)", fontWeight: 600 }}>{value}</div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* ── Change name ─────────────────────────────────────────────────────── */}
+      <div>
+        <div style={{ fontSize: ".68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "var(--muted)", marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+          <i className="fas fa-user-pen" style={{ fontSize: ".6rem" }} /> Display Name
+        </div>
+        <div style={{ background: "#fff", border: "1px solid rgba(17,17,17,.08)", borderRadius: "12px", padding: "22px 24px" }}>
+          <ChangeNameForm currentName={profile?.full_name ?? ""} />
         </div>
       </div>
 
