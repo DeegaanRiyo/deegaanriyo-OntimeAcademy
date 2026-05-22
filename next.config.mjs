@@ -19,6 +19,20 @@ const nextConfig = {
   },
   async headers() {
     return [
+      // All API routes — never cache; data is user-specific and changes frequently
+      {
+        source: "/api/(.*)",
+        headers: [
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+        ],
+      },
+      // All dashboard pages — same reason
+      {
+        source: "/dashboard/(.*)",
+        headers: [
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+        ],
+      },
       {
         source: "/sw.js",
         headers: [

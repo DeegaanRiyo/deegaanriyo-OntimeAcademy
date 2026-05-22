@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import EmptyState from "@/components/dashboard/EmptyState";

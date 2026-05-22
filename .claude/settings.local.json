@@ -16,7 +16,8 @@
       "Bash(npm install *)",
       "Bash(npx supabase *)",
       "Bash(node -e ' *)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(grep -v \"receipt\\\\|settings\\\\|new\\\\|\\\\\\\\[id\\\\\\\\]\\\\|\\\\\\\\[profile\")"
     ]
   }
 }
