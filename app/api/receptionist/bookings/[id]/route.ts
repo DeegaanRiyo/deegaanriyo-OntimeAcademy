@@ -159,17 +159,11 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Delete associated payments first to avoid FK constraint violation
-  const { error: payErr } = await svc
-    .from("booking_payments")
-    .delete()
-    .eq("booking_id", params.id);
-
-  if (payErr) return NextResponse.json({ error: payErr.message }, { status: 500 });
-
+  // Soft-delete: set deleted_at instead of removing the row.
+  // booking_payments are untouched so revenue stays accurate in the overview.
   const { error } = await svc
     .from("bookings")
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", params.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

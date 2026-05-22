@@ -43,7 +43,8 @@ export default async function ManagerLayout({ children }: { children: React.Reac
   const { count: pendingBookings } = await serviceClient2
     .from("bookings")
     .select("id", { count: "exact", head: true })
-    .eq("status", "pending");
+    .eq("status", "pending")
+    .is("deleted_at", null);
 
   let approvedExpenses = 0;
   try {

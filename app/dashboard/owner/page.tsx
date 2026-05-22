@@ -119,8 +119,8 @@ export default async function OwnerDashboardPage() {
     // Online platform students
     admin.from("profiles").select("id").eq("role", "student"),
 
-    // Bookings this month
-    admin.from("bookings").select("id, status").gte("created_at", monthStart),
+    // Bookings this month (exclude soft-deleted)
+    admin.from("bookings").select("id, status").gte("created_at", monthStart).is("deleted_at", null),
 
     // Recent 8 student registrations
     admin

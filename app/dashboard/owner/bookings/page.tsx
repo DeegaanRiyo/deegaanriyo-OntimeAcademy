@@ -30,6 +30,7 @@ export default async function OwnerBookingsPage() {
         status, notes, booked_by, estimated_cost, created_at,
         spaces(id, name, slug)
       `)
+      .is("deleted_at", null)
       .order("booking_date", { ascending: false })
       .order("start_time"),
 
