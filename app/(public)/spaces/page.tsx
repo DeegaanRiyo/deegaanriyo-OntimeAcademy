@@ -62,35 +62,40 @@ export default async function SpacesPage() {
               return (
                 <div
                   key={sp.id}
-                  className="bg-[var(--dark2)] border border-[var(--border)] rounded-xl overflow-hidden transition-all duration-300 hover:border-[rgba(193,68,14,.3)] hover:-translate-y-0.5"
+                  className="bg-[#1c1c1c] border border-[rgba(255,255,255,.08)] rounded-xl overflow-hidden transition-all duration-300 hover:border-[rgba(193,68,14,.4)] hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(0,0,0,.4)]"
                 >
-                  {/* Image */}
-                  <div className="relative h-[220px] overflow-hidden">
+                  {/* Image — full bleed, taller for more visual impact */}
+                  <div className="relative h-[260px] overflow-hidden">
                     <Image
                       src={image}
                       alt={sp.name}
                       fill
-                      className="object-cover"
+                      className="object-cover object-center transition-transform duration-500 hover:scale-105"
                       sizes="(max-width: 768px) 100vw, 50vw"
                     />
-                  </div>
-
-                  {/* Body */}
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-2">
-                      <h2 className="text-[1.1rem] font-bold m-0">{sp.name}</h2>
+                    {/* Subtle gradient overlay so image blends into card body */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1c1c1c] via-transparent to-transparent opacity-60" />
+                    {/* Availability badge overlaid on image */}
+                    <div className="absolute top-3 right-3">
                       {sp.is_available ? (
-                        <span className="px-3 py-0.5 rounded-full text-[.65rem] font-bold bg-[rgba(34,197,94,.12)] text-[#86efac] border border-[rgba(34,197,94,.3)]">
+                        <span className="px-3 py-1 rounded-full text-[.63rem] font-bold bg-[rgba(0,0,0,.55)] backdrop-blur-sm text-[#86efac] border border-[rgba(34,197,94,.4)]">
                           Available
                         </span>
                       ) : (
-                        <span className="px-3 py-0.5 rounded-full text-[.65rem] font-bold bg-[rgba(239,68,68,.12)] text-[#fca5a5] border border-[rgba(239,68,68,.3)]">
+                        <span className="px-3 py-1 rounded-full text-[.63rem] font-bold bg-[rgba(0,0,0,.55)] backdrop-blur-sm text-[#fca5a5] border border-[rgba(239,68,68,.4)]">
                           Occupied
                         </span>
                       )}
                     </div>
+                  </div>
 
-                    <p className="text-[.88rem] text-[var(--muted)] leading-[1.65] mb-4 line-clamp-2">
+                  {/* Body */}
+                  <div className="p-6">
+                    <div className="mb-2">
+                      <h2 className="text-[1.15rem] font-bold text-white m-0">{sp.name}</h2>
+                    </div>
+
+                    <p className="text-[.88rem] text-[rgba(255,255,255,.55)] leading-[1.65] mb-4 line-clamp-2">
                       {sp.description ?? "A professional space designed for productivity and collaboration."}
                     </p>
 
@@ -99,7 +104,7 @@ export default async function SpacesPage() {
                       {pills.map((pill) => (
                         <span
                           key={pill}
-                          className="px-3 py-1 rounded-full bg-[rgba(193,68,14,.1)] border border-[rgba(193,68,14,.2)] text-[var(--teal2)] text-[.7rem] font-semibold"
+                          className="px-3 py-1 rounded-full bg-[rgba(193,68,14,.15)] border border-[rgba(193,68,14,.25)] text-[#f4a97f] text-[.7rem] font-semibold"
                         >
                           {pill}
                         </span>
@@ -107,15 +112,15 @@ export default async function SpacesPage() {
                     </div>
 
                     {/* Footer */}
-                    <div className="flex items-center justify-between pt-4 border-t border-[var(--border)]">
-                      <span className="text-[1.05rem] font-extrabold">
+                    <div className="flex items-center justify-between pt-4 border-t border-[rgba(255,255,255,.08)]">
+                      <span className="text-[1.05rem] font-extrabold text-white">
                         {sp.hourly_rate > 0 ? (
                           <>
                             KES {sp.hourly_rate.toLocaleString()}
-                            <span className="text-[.72rem] font-normal text-[var(--muted)]"> /hr</span>
+                            <span className="text-[.72rem] font-normal text-[rgba(255,255,255,.45)]"> /hr</span>
                           </>
                         ) : (
-                          <span className="text-[.82rem] font-semibold text-[var(--muted)]">
+                          <span className="text-[.82rem] font-semibold text-[rgba(255,255,255,.45)]">
                             Enquire for pricing
                           </span>
                         )}
