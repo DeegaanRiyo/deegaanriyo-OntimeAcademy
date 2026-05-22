@@ -95,7 +95,7 @@ export default async function SpacesPage() {
                       <h2 className="text-[1.15rem] font-bold text-white m-0">{sp.name}</h2>
                     </div>
 
-                    <p className="text-[.88rem] text-[rgba(255,255,255,.55)] leading-[1.65] mb-4 line-clamp-2">
+                    <p className="text-[.88rem] text-[rgba(255,255,255,.78)] leading-[1.65] mb-4 line-clamp-2">
                       {sp.description ?? "A professional space designed for productivity and collaboration."}
                     </p>
 
