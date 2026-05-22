@@ -18,8 +18,11 @@ type Booking = {
   estimated_cost: number | null;
   total_paid:     number;
   method:         string | null;
+  reference:      string | null;
+  status:         string;
   notes:          string | null;
   created_at:     string;
+  booked_by_name: string | null;
   spaces:         { id: string; name: string } | null;
 };
 
@@ -640,10 +643,18 @@ function BookingFlagModal({ booking, onClose }: { booking: Booking; onClose: () 
   );
 }
 
+// Status badge styles
+const STATUS_STYLES: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  pending:   { label: "Pending",   color: "#b45309", bg: "rgba(180,83,9,.08)",   border: "rgba(180,83,9,.25)"   },
+  confirmed: { label: "Confirmed", color: "#16a34a", bg: "rgba(22,163,74,.08)",  border: "rgba(22,163,74,.25)"  },
+  cancelled: { label: "Cancelled", color: "#dc2626", bg: "rgba(220,38,38,.07)",  border: "rgba(220,38,38,.2)"   },
+  completed: { label: "Completed", color: "#2563eb", bg: "rgba(37,99,235,.07)",  border: "rgba(37,99,235,.2)"   },
+};
+
 // ─── Bookings Table ───────────────────────────────────────────────────────────
 
 function BookingsTable({ bookings, onSettle, onFlag }: { bookings: Booking[]; onSettle: (b: Booking) => void; onFlag: (b: Booking) => void }) {
-  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [openId, setOpenId] = React.useState<string | null>(null);
 
   if (bookings.length === 0) return null;
 
@@ -657,125 +668,172 @@ function BookingsTable({ bookings, onSettle, onFlag }: { bookings: Booking[]; on
               <th style={TH}>Space</th>
               <th style={TH}>Date</th>
               <th style={TH}>Time</th>
+              <th style={TH}>Hours</th>
               <th style={TH}>Cost</th>
               <th style={TH}>Paid</th>
               <th style={TH}>Balance</th>
               <th style={TH}>Method</th>
-              <th style={TH}>Booked On</th>
+              <th style={TH}>Reference</th>
+              <th style={TH}>Status</th>
+              <th style={TH}>Booked By</th>
+              <th style={TH}>Date Created</th>
               <th style={TH}></th>
+              <th style={{ ...TH, width: 28 }}></th>
             </tr>
           </thead>
           <tbody>
             {bookings.map((b) => {
-              const isHovered   = hoveredRow === b.id;
-              const balance     = b.estimated_cost != null ? b.estimated_cost - b.total_paid : null;
-              const endDisplay  = b.end_time ? fmt12(b.end_time) : null;
+              const balance        = b.estimated_cost != null ? b.estimated_cost - b.total_paid : null;
+              const endDisplay     = b.end_time ? fmt12(b.end_time) : null;
               const hasOutstanding = balance != null && balance > 0;
+              const ss             = STATUS_STYLES[b.status] ?? STATUS_STYLES.pending;
+              const isOpen         = openId === b.id;
 
               return (
-                <tr key={b.id}
-                  onMouseEnter={() => setHoveredRow(b.id)}
-                  onMouseLeave={() => setHoveredRow(null)}
-                  style={{ borderBottom: "1px solid rgba(17,17,17,.045)", background: hasOutstanding ? "rgba(180,83,9,.02)" : isHovered ? "rgba(17,17,17,.018)" : "transparent", transition: "background .08s" }}>
+                <React.Fragment key={b.id}>
+                  <tr
+                    onClick={() => setOpenId(prev => prev === b.id ? null : b.id)}
+                    style={{ borderBottom: isOpen ? "none" : "1px solid rgba(17,17,17,.045)", background: hasOutstanding ? "rgba(180,83,9,.02)" : "transparent", cursor: "pointer", transition: "background .08s" }}
+                    onMouseEnter={(e) => { if (!hasOutstanding) (e.currentTarget as HTMLElement).style.background = "rgba(17,17,17,.018)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = hasOutstanding ? "rgba(180,83,9,.02)" : "transparent"; }}
+                  >
+                    {/* Client */}
+                    <td style={TD} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ fontWeight: 600, color: "#111827", fontSize: ".8rem", whiteSpace: "nowrap" }}>{b.visitor_name}</div>
+                      <div style={{ fontSize: ".68rem", color: "#6B7280", marginTop: "1px" }}>{b.visitor_phone}</div>
+                    </td>
 
-                  {/* Client */}
-                  <td style={TD}>
-                    <div style={{ fontWeight: 600, color: "#111827", fontSize: ".8rem", whiteSpace: "nowrap" }}>{b.visitor_name}</div>
-                    <div style={{ fontSize: ".68rem", color: "#6B7280", marginTop: "1px" }}>{b.visitor_phone}</div>
-                  </td>
+                    {/* Space */}
+                    <td style={TD_M}>
+                      {b.spaces ? (
+                        <span style={{ fontSize: ".68rem", fontWeight: 600, color: "var(--teal2)", background: "rgba(193,68,14,.07)", border: "1px solid rgba(193,68,14,.18)", borderRadius: "5px", padding: "2px 8px", whiteSpace: "nowrap" }}>
+                          {b.spaces.name}
+                        </span>
+                      ) : <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
+                    </td>
 
-                  {/* Space */}
-                  <td style={TD_M}>
-                    {b.spaces ? (
-                      <span style={{ fontSize: ".68rem", fontWeight: 600, color: "var(--teal2)", background: "rgba(193,68,14,.07)", border: "1px solid rgba(193,68,14,.18)", borderRadius: "5px", padding: "2px 8px", whiteSpace: "nowrap" }}>
-                        {b.spaces.name}
+                    {/* Date */}
+                    <td style={{ ...TD_M, whiteSpace: "nowrap" }}>
+                      {fmtDate(b.booking_date + "T12:00:00")}
+                    </td>
+
+                    {/* Time */}
+                    <td style={{ ...TD_M, whiteSpace: "nowrap" }}>
+                      {b.start_time ? fmt12(b.start_time) : "—"}
+                      {endDisplay ? <> – {endDisplay}</> : null}
+                    </td>
+
+                    {/* Hours */}
+                    <td style={{ ...TD_M, textAlign: "center", whiteSpace: "nowrap" }}>
+                      {b.hours ? `${b.hours}h` : "—"}
+                    </td>
+
+                    {/* Cost */}
+                    <td style={{ ...TD, fontWeight: 600, whiteSpace: "nowrap" }}>
+                      {b.estimated_cost != null
+                        ? `KES ${b.estimated_cost.toLocaleString()}`
+                        : <span style={{ color: "rgba(17,17,17,.2)", fontWeight: 400, fontSize: ".72rem" }}>—</span>}
+                    </td>
+
+                    {/* Paid */}
+                    <td style={{ ...TD, fontWeight: 700, whiteSpace: "nowrap" }}>
+                      <span style={{ color: b.total_paid > 0 ? "#16a34a" : "rgba(17,17,17,.3)" }}>
+                        {b.total_paid > 0 ? `KES ${b.total_paid.toLocaleString()}` : "—"}
                       </span>
-                    ) : <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
-                  </td>
+                    </td>
 
-                  {/* Date */}
-                  <td style={{ ...TD_M, whiteSpace: "nowrap" }}>
-                    {fmtDate(b.booking_date + "T12:00:00")}
-                  </td>
-
-                  {/* Time */}
-                  <td style={{ ...TD_M, whiteSpace: "nowrap" }}>
-                    {b.start_time ? fmt12(b.start_time) : "—"}
-                    {endDisplay ? <> – {endDisplay}</> : null}
-                  </td>
-
-                  {/* Cost */}
-                  <td style={{ ...TD, fontWeight: 600, whiteSpace: "nowrap" }}>
-                    {b.estimated_cost != null
-                      ? `KES ${b.estimated_cost.toLocaleString()}`
-                      : <span style={{ color: "rgba(17,17,17,.2)", fontWeight: 400, fontSize: ".72rem" }}>—</span>}
-                  </td>
-
-                  {/* Paid */}
-                  <td style={{ ...TD, fontWeight: 700, whiteSpace: "nowrap" }}>
-                    KES {b.total_paid.toLocaleString()}
-                  </td>
-
-                  {/* Balance */}
-                  <td style={TD}>
-                    {balance == null ? (
-                      <span style={{ color: "rgba(17,17,17,.2)", fontSize: ".68rem" }}>—</span>
-                    ) : balance <= 0 ? (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", fontSize: ".68rem", fontWeight: 700, color: "#16a34a" }}>
-                        <i className="fas fa-check-circle" /> Paid
-                      </span>
-                    ) : (
-                      <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 7px", borderRadius: "100px", fontSize: ".67rem", fontWeight: 700, background: "rgba(180,83,9,.09)", color: "#b45309", whiteSpace: "nowrap" }}>
-                        KES {balance.toLocaleString()} owes
-                      </span>
-                    )}
-                  </td>
-
-                  {/* Method */}
-                  <td style={TD}>
-                    {b.method ? (
-                      <span style={{ display: "inline-flex", alignItems: "center", fontSize: ".68rem", fontWeight: 600, background: "rgba(17,17,17,.05)", color: "#374151", padding: "2px 7px", borderRadius: "100px", whiteSpace: "nowrap" }}>
-                        {METHOD_LABELS[b.method] ?? b.method}
-                      </span>
-                    ) : <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
-                  </td>
-
-                  {/* Booked On */}
-                  <td style={{ ...TD_M, whiteSpace: "nowrap" }}>{fmtDate(b.created_at)}</td>
-
-                  {/* Actions */}
-                  <td style={{ ...TD, whiteSpace: "nowrap", paddingRight: "10px" }}>
-                    <div style={{ display: "inline-flex", gap: "4px", alignItems: "center" }}>
-                      {/* Receipt */}
-                      <Link
-                        href={`/dashboard/receptionist/booking-receipt/${b.id}`}
-                        target="_blank" rel="noopener noreferrer"
-                        title="View Receipt"
-                        style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6", border: "none", borderRadius: "6px", cursor: "pointer", color: "#6B7280", fontSize: ".65rem", textDecoration: "none" }}
-                      >
-                        <i className="fas fa-receipt" />
-                      </Link>
-                      {/* Settle */}
-                      {hasOutstanding && (
-                        <button
-                          onClick={() => onSettle(b)}
-                          title="Settle Payment"
-                          style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(180,83,9,.09)", border: "none", borderRadius: "6px", cursor: "pointer", color: "#b45309", fontSize: ".65rem" }}
-                        >
-                          <i className="fas fa-dollar-sign" />
-                        </button>
+                    {/* Balance */}
+                    <td style={TD}>
+                      {balance == null ? (
+                        <span style={{ color: "rgba(17,17,17,.2)", fontSize: ".68rem" }}>—</span>
+                      ) : balance <= 0 ? (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", fontSize: ".68rem", fontWeight: 700, color: "#16a34a" }}>
+                          <i className="fas fa-check-circle" /> Paid
+                        </span>
+                      ) : (
+                        <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 7px", borderRadius: "100px", fontSize: ".67rem", fontWeight: 700, background: "rgba(180,83,9,.09)", color: "#b45309", whiteSpace: "nowrap" }}>
+                          KES {balance.toLocaleString()} owes
+                        </span>
                       )}
-                      {/* Flag */}
-                      <button
-                        onClick={() => onFlag(b)}
-                        title="Flag for correction"
-                        style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6", border: "none", borderRadius: "6px", cursor: "pointer", color: "#EF4444", fontSize: ".65rem" }}
-                      >
-                        <i className="fas fa-flag" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+
+                    {/* Method */}
+                    <td style={TD}>
+                      {b.method ? (
+                        <span style={{ display: "inline-flex", alignItems: "center", fontSize: ".68rem", fontWeight: 600, background: "rgba(17,17,17,.05)", color: "#374151", padding: "2px 7px", borderRadius: "100px", whiteSpace: "nowrap" }}>
+                          {METHOD_LABELS[b.method] ?? b.method}
+                        </span>
+                      ) : <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
+                    </td>
+
+                    {/* Reference */}
+                    <td style={{ ...TD_M, fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                      {b.reference || <span style={{ color: "rgba(17,17,17,.2)", fontFamily: "inherit" }}>—</span>}
+                    </td>
+
+                    {/* Status */}
+                    <td style={TD}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 8px", borderRadius: "20px", fontSize: ".66rem", fontWeight: 700, color: ss.color, background: ss.bg, border: `1px solid ${ss.border}`, whiteSpace: "nowrap" }}>
+                        <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: ss.color, flexShrink: 0 }} />
+                        {ss.label}
+                      </span>
+                    </td>
+
+                    {/* Booked By */}
+                    <td style={{ ...TD_M, whiteSpace: "nowrap" }}>
+                      {b.booked_by_name || <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
+                    </td>
+
+                    {/* Date Created */}
+                    <td style={{ ...TD_M, whiteSpace: "nowrap" }}>{fmtDate(b.created_at)}</td>
+
+                    {/* Actions */}
+                    <td style={{ ...TD, whiteSpace: "nowrap", paddingRight: "10px" }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: "inline-flex", gap: "4px", alignItems: "center" }}>
+                        <Link
+                          href={`/dashboard/receptionist/booking-receipt/${b.id}`}
+                          target="_blank" rel="noopener noreferrer"
+                          title="View Receipt"
+                          style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6", border: "none", borderRadius: "6px", cursor: "pointer", color: "#6B7280", fontSize: ".65rem", textDecoration: "none" }}
+                        >
+                          <i className="fas fa-receipt" />
+                        </Link>
+                        {hasOutstanding && (
+                          <button
+                            onClick={() => onSettle(b)}
+                            title="Settle Payment"
+                            style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(180,83,9,.09)", border: "none", borderRadius: "6px", cursor: "pointer", color: "#b45309", fontSize: ".65rem" }}
+                          >
+                            <i className="fas fa-dollar-sign" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => onFlag(b)}
+                          title="Flag for correction"
+                          style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6", border: "none", borderRadius: "6px", cursor: "pointer", color: "#EF4444", fontSize: ".65rem" }}
+                        >
+                          <i className="fas fa-flag" />
+                        </button>
+                      </div>
+                    </td>
+
+                    {/* Expand */}
+                    <td style={{ padding: "0 10px", height: "38px", verticalAlign: "middle", width: 28 }}>
+                      <i className="fas fa-chevron-down" style={{ fontSize: ".55rem", color: "rgba(17,17,17,.25)", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform .2s" }} />
+                    </td>
+                  </tr>
+
+                  {isOpen && b.notes && (
+                    <tr style={{ borderBottom: "1px solid rgba(17,17,17,.045)", background: "rgba(17,17,17,.012)" }}>
+                      <td colSpan={15} style={{ padding: "10px 18px 12px" }}>
+                        <div>
+                          <div style={{ fontSize: ".6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "2px" }}>Notes</div>
+                          <div style={{ fontSize: ".78rem", color: "var(--dark)", lineHeight: 1.55, maxWidth: "500px" }}>{b.notes}</div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               );
             })}
           </tbody>

@@ -62,21 +62,26 @@ function DeleteMemberModal({ member, onClose, onDeleted }: {
 }
 
 export type MemberRow = {
-  id: string;
-  full_name: string;
-  email: string;
-  phone: string | null;
+  id:                 string;
+  full_name:          string | null;
+  email:              string | null;
+  phone:              string | null;
   sub: {
-    is_active: boolean;
+    is_active:          boolean;
     subscription_start: string | null;
-    subscription_end: string | null;
-    profession: string | null;
-    bio: string | null;
-    is_public: boolean;
-    slug: string | null;
+    subscription_end:   string | null;
+    profession:         string | null;
+    bio:                string | null;
+    is_public:          boolean;
+    slug:               string | null;
   } | null;
-  status: "active" | "expiring" | "expired" | "none";
-  days: number | null;
+  status:             "active" | "expiring" | "expired" | "none";
+  days:               number | null;
+  amount_paid:        number;
+  method:             string | null;
+  reference:          string | null;
+  recorded_by_name:   string | null;
+  payment_created_at: string | null;
 };
 
 function fmtDate(iso: string | null | undefined) {
@@ -84,20 +89,35 @@ function fmtDate(iso: string | null | undefined) {
   return new Date(iso).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" });
 }
 
+const METHOD_LABELS: Record<string, string> = { cash: "Cash", mpesa: "M-Pesa", bank_transfer: "Bank" };
+
+// ── Table cell styles ─────────────────────────────────────────────────────────
+const TH: React.CSSProperties = {
+  padding: "7px 12px", textAlign: "left", fontSize: ".58rem", fontWeight: 700,
+  textTransform: "uppercase", letterSpacing: ".09em", color: "#6b7280",
+  whiteSpace: "nowrap", background: "rgba(17,17,17,.015)",
+};
+const TD: React.CSSProperties = {
+  padding: "0 12px", height: "44px", verticalAlign: "middle",
+  fontSize: ".75rem", color: "#111827",
+};
+const TD_M: React.CSSProperties = {
+  padding: "0 12px", height: "44px", verticalAlign: "middle",
+  fontSize: ".72rem", color: "#4B5563",
+};
+
 export default function MemberExpandTable({ members: initialMembers }: { members: MemberRow[] }) {
   const [localMembers,  setLocalMembers]  = useState<MemberRow[]>(initialMembers);
   const [openId,        setOpenId]        = useState<string | null>(null);
   const [search,        setSearch]        = useState("");
   const [deleteTarget,  setDeleteTarget]  = useState<MemberRow | null>(null);
 
-  const members = localMembers;
-
   const q = search.trim().toLowerCase();
-  const filtered = members.filter((m) =>
+  const filtered = localMembers.filter((m) =>
     !q ||
-    (m.full_name ?? "").toLowerCase().includes(q) ||
-    (m.email ?? "").toLowerCase().includes(q) ||
-    (m.phone ?? "").includes(q) ||
+    (m.full_name   ?? "").toLowerCase().includes(q) ||
+    (m.email       ?? "").toLowerCase().includes(q) ||
+    (m.phone       ?? "").includes(q) ||
     (m.sub?.profession ?? "").toLowerCase().includes(q)
   );
 
@@ -113,7 +133,7 @@ export default function MemberExpandTable({ members: initialMembers }: { members
           <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--muted)", fontSize: ".8rem", pointerEvents: "none" }} />
           <input
             type="text"
-            placeholder="Search by name, email, or phone…"
+            placeholder="Search by name, email, phone or profession…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="form-input"
@@ -133,129 +153,177 @@ export default function MemberExpandTable({ members: initialMembers }: { members
         </div>
       ) : null}
 
-    <div className="tbl-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Profession</th>
-            <th>Since</th>
-            <th>Expires</th>
-            <th>Days Left</th>
-            <th>Status</th>
-            <th style={{ width: 28 }} />
-            <th style={{ width: 28 }} />
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.map(m => {
-            const open = openId === m.id;
-            const initials = (m.full_name || m.email || "?")
-              .split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
-            const avatarBg = m.status === "active" || m.status === "expiring"
-              ? "linear-gradient(135deg,var(--teal),var(--teal2))"
-              : "var(--dark3)";
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid rgba(17,17,17,.07)" }}>
+              <th style={TH}>Member</th>
+              <th style={TH}>Email</th>
+              <th style={TH}>Profession</th>
+              <th style={TH}>Paid (Period)</th>
+              <th style={TH}>Method</th>
+              <th style={TH}>Sub Start</th>
+              <th style={TH}>Sub End</th>
+              <th style={TH}>Days Left</th>
+              <th style={TH}>Status</th>
+              <th style={TH}>Recorded By</th>
+              <th style={TH}>Date Registered</th>
+              <th style={{ ...TH, width: 28 }} />
+              <th style={{ ...TH, width: 28 }} />
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(m => {
+              const open = openId === m.id;
+              const initials = (m.full_name || m.email || "?")
+                .split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+              const avatarBg = m.status === "active" || m.status === "expiring"
+                ? "linear-gradient(135deg,var(--teal),var(--teal2))"
+                : "var(--dark3)";
+              const daysColor = m.days === null ? "var(--muted)"
+                : m.days <= 0 ? "#dc2626"
+                : m.days <= 7 ? "#b45309"
+                : "var(--dark)";
 
-            return (
-              <>
-                <tr
-                  key={m.id}
-                  className="tbl-expand-row"
-                  onClick={() => toggle(m.id)}
-                >
-                  <td>
-                    <div className="td-name">
-                      <div className="td-avatar" style={{ background: avatarBg }}>{initials}</div>
-                      <div>
-                        <div className="td-main">{m.full_name || "—"}</div>
-                        <div style={{ fontSize: "10.5px", color: "var(--muted)" }}>{m.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td style={{ color: "var(--muted)", fontSize: ".78rem" }}>{m.sub?.profession || "—"}</td>
-                  <td style={{ color: "var(--muted)", fontSize: ".78rem" }}>{fmtDate(m.sub?.subscription_start)}</td>
-                  <td style={{ fontSize: ".78rem" }}>{fmtDate(m.sub?.subscription_end)}</td>
-                  <td style={{
-                    fontSize: ".78rem", fontWeight: 600,
-                    color: m.days === null ? "var(--muted)" : m.days <= 0 ? "var(--red)" : m.days <= 7 ? "var(--gold2)" : "var(--dark)",
-                  }}>
-                    {m.days === null ? "—" : m.days <= 0 ? `${Math.abs(m.days)}d overdue` : `${m.days}d`}
-                  </td>
-                  <td>
-                    {m.status === "active"   && <span className="badge gr"><span className="badge-dot" />Active</span>}
-                    {m.status === "expiring" && <span className="badge gd"><span className="badge-dot" />Expiring</span>}
-                    {m.status === "expired"  && <span className="badge rd"><span className="badge-dot" />Expired</span>}
-                    {m.status === "none"     && <span className="badge"><span className="badge-dot" />No record</span>}
-                  </td>
-                  <td onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => setDeleteTarget(m)}
-                      title="Delete member subscription"
-                      style={{ width: "24px", height: "24px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(220,38,38,.07)", border: "1px solid rgba(220,38,38,.15)", borderRadius: "5px", cursor: "pointer", color: "#dc2626", fontSize: ".58rem" }}
-                    >
-                      <i className="fas fa-trash" />
-                    </button>
-                  </td>
-                  <td>
-                    <i
-                      className="fas fa-chevron-down expand-chevron"
-                      style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform .2s" }}
-                    />
-                  </td>
-                </tr>
-
-                {open && (
-                  <tr key={`${m.id}-detail`} className="tbl-expand-body">
-                    <td colSpan={8}>
-                      <div className="row-detail">
-                        <div className="detail-grid">
-                          <div className="detail-item">
-                            <span className="detail-label">Email</span>
-                            <span className="detail-value">{m.email || "—"}</span>
-                          </div>
-                          <div className="detail-item">
-                            <span className="detail-label">Phone</span>
-                            <span className="detail-value">{m.phone || "—"}</span>
-                          </div>
-                          <div className="detail-item">
-                            <span className="detail-label">Profession</span>
-                            <span className="detail-value">{m.sub?.profession || "—"}</span>
-                          </div>
-                          <div className="detail-item">
-                            <span className="detail-label">Member Since</span>
-                            <span className="detail-value">{fmtDate(m.sub?.subscription_start)}</span>
-                          </div>
-                          <div className="detail-item">
-                            <span className="detail-label">Expires</span>
-                            <span className="detail-value">{fmtDate(m.sub?.subscription_end)}</span>
-                          </div>
-                          <div className="detail-item">
-                            <span className="detail-label">Public Profile</span>
-                            <span className="detail-value">
-                              {m.sub?.is_public && m.sub?.slug
-                                ? <a href={`/members/${m.sub.slug}`} target="_blank" rel="noopener noreferrer" style={{ color: "var(--teal2)" }}>
-                                    View →
-                                  </a>
-                                : "Private"}
-                            </span>
-                          </div>
+              return (
+                <React.Fragment key={m.id}>
+                  <tr
+                    onClick={() => toggle(m.id)}
+                    style={{
+                      borderBottom: open ? "none" : "1px solid rgba(17,17,17,.045)",
+                      cursor: "pointer", transition: "background .08s",
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(17,17,17,.018)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                  >
+                    {/* Member */}
+                    <td style={TD}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "9px", whiteSpace: "nowrap" }}>
+                        <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: avatarBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".6rem", fontWeight: 700, color: "#fff", flexShrink: 0 }}>
+                          {initials}
                         </div>
-                        {m.sub?.bio && (
-                          <div className="detail-item" style={{ marginTop: 6 }}>
-                            <span className="detail-label">Bio</span>
-                            <span className="detail-value" style={{ maxWidth: 480, lineHeight: 1.55 }}>{m.sub.bio}</span>
-                          </div>
-                        )}
+                        <div>
+                          <div style={{ fontWeight: 600, color: "var(--dark)", fontSize: ".8rem" }}>{m.full_name || "—"}</div>
+                          <div style={{ fontSize: "10px", color: "var(--muted)" }}>{m.phone || "—"}</div>
+                        </div>
                       </div>
                     </td>
+
+                    {/* Email */}
+                    <td style={{ ...TD_M, maxWidth: "160px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {m.email || <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
+                    </td>
+
+                    {/* Profession */}
+                    <td style={{ ...TD_M, whiteSpace: "nowrap" }}>
+                      {m.sub?.profession || <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
+                    </td>
+
+                    {/* Paid */}
+                    <td style={{ ...TD, fontWeight: 700, whiteSpace: "nowrap" }}>
+                      {m.amount_paid > 0
+                        ? <span style={{ color: "#16a34a" }}>KES {m.amount_paid.toLocaleString()}</span>
+                        : <span style={{ color: "rgba(17,17,17,.25)", fontWeight: 400 }}>—</span>}
+                    </td>
+
+                    {/* Method */}
+                    <td style={TD_M}>
+                      {m.method
+                        ? <span style={{ display: "inline-flex", fontSize: ".68rem", fontWeight: 600, background: "rgba(17,17,17,.05)", color: "#374151", padding: "2px 7px", borderRadius: "100px", whiteSpace: "nowrap" }}>
+                            {METHOD_LABELS[m.method] ?? m.method}
+                          </span>
+                        : <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
+                    </td>
+
+                    {/* Sub Start */}
+                    <td style={{ ...TD_M, whiteSpace: "nowrap" }}>{fmtDate(m.sub?.subscription_start)}</td>
+
+                    {/* Sub End */}
+                    <td style={{ ...TD_M, whiteSpace: "nowrap" }}>{fmtDate(m.sub?.subscription_end)}</td>
+
+                    {/* Days */}
+                    <td style={{ ...TD, fontWeight: 600, color: daysColor, whiteSpace: "nowrap" }}>
+                      {m.days === null ? "—"
+                        : m.days <= 0 ? `${Math.abs(m.days)}d overdue`
+                        : `${m.days}d`}
+                    </td>
+
+                    {/* Status */}
+                    <td style={TD}>
+                      {m.status === "active"   && <span className="badge gr"><span className="badge-dot" />Active</span>}
+                      {m.status === "expiring" && <span className="badge gd"><span className="badge-dot" />Expiring</span>}
+                      {m.status === "expired"  && <span className="badge rd"><span className="badge-dot" />Expired</span>}
+                      {m.status === "none"     && <span className="badge"><span className="badge-dot" />No record</span>}
+                    </td>
+
+                    {/* Recorded By */}
+                    <td style={{ ...TD_M, whiteSpace: "nowrap" }}>
+                      {m.recorded_by_name || <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
+                    </td>
+
+                    {/* Date Registered */}
+                    <td style={{ ...TD_M, whiteSpace: "nowrap" }}>{fmtDate(m.payment_created_at)}</td>
+
+                    {/* Delete */}
+                    <td style={{ padding: "0 6px", height: "44px", verticalAlign: "middle", width: 28 }} onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setDeleteTarget(m)}
+                        title="Delete member subscription"
+                        style={{ width: "24px", height: "24px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(220,38,38,.07)", border: "1px solid rgba(220,38,38,.15)", borderRadius: "5px", cursor: "pointer", color: "#dc2626", fontSize: ".58rem" }}
+                      >
+                        <i className="fas fa-trash" />
+                      </button>
+                    </td>
+
+                    {/* Expand chevron */}
+                    <td style={{ padding: "0 10px", height: "44px", verticalAlign: "middle", width: 28 }}>
+                      <i
+                        className="fas fa-chevron-down"
+                        style={{ fontSize: ".58rem", color: "rgba(17,17,17,.25)", transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform .2s" }}
+                      />
+                    </td>
                   </tr>
-                )}
-              </>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+
+                  {open && (
+                    <tr style={{ borderBottom: "1px solid rgba(17,17,17,.045)", background: "rgba(17,17,17,.012)" }}>
+                      <td colSpan={13} style={{ padding: "12px 18px 14px" }}>
+                        <div style={{ display: "flex", gap: "28px", flexWrap: "wrap" }}>
+                          {m.reference && (
+                            <div>
+                              <div style={{ fontSize: ".6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "2px" }}>Reference</div>
+                              <div style={{ fontSize: ".78rem", color: "var(--dark)", fontFamily: "monospace" }}>{m.reference}</div>
+                            </div>
+                          )}
+                          {m.sub?.bio && (
+                            <div style={{ maxWidth: "400px" }}>
+                              <div style={{ fontSize: ".6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "2px" }}>Bio</div>
+                              <div style={{ fontSize: ".78rem", color: "var(--dark)", lineHeight: 1.55 }}>{m.sub.bio}</div>
+                            </div>
+                          )}
+                          {m.sub?.is_public && m.sub?.slug && (
+                            <div>
+                              <div style={{ fontSize: ".6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "2px" }}>Public Profile</div>
+                              <a href={`/members/${m.sub.slug}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: ".78rem", color: "var(--teal2)", textDecoration: "underline" }}>
+                                /members/{m.sub.slug} →
+                              </a>
+                            </div>
+                          )}
+                          {!m.sub?.is_public && (
+                            <div>
+                              <div style={{ fontSize: ".6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "2px" }}>Public Profile</div>
+                              <div style={{ fontSize: ".78rem", color: "rgba(17,17,17,.4)" }}>Private</div>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       {deleteTarget && (
         <DeleteMemberModal

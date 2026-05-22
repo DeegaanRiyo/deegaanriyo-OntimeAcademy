@@ -4,21 +4,24 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 
 type Member = {
-  id:           string;
-  name:         string;
-  phone:        string;
-  email:        string | null;
-  profile_id:   string | null;
-  amount:       number;
-  total_paid:   number;
-  period_paid:  number;
-  outstanding:  number;
-  method:       string;
-  reference:    string | null;
-  notes:        string | null;
-  payment_date: string;
-  sub_start:    string | null;
-  due_date:     string | null;
+  id:                 string;
+  name:               string;
+  phone:              string;
+  email:              string | null;
+  profile_id:         string | null;
+  profession:         string | null;
+  amount:             number;
+  total_paid:         number;
+  period_paid:        number;
+  outstanding:        number;
+  method:             string;
+  reference:          string | null;
+  notes:              string | null;
+  payment_date:       string;
+  sub_start:          string | null;
+  due_date:           string | null;
+  recorded_by_name:   string | null;
+  payment_created_at: string | null;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -343,15 +346,27 @@ function MemberFlagModal({ member, onClose }: { member: Member; onClose: () => v
   );
 }
 
+// ── Table cell styles ─────────────────────────────────────────────────────────
+const TH: React.CSSProperties = {
+  padding: "6px 12px", textAlign: "left", fontSize: ".55rem", fontWeight: 700,
+  textTransform: "uppercase", letterSpacing: ".1em", color: "#6B7280",
+  whiteSpace: "nowrap", background: "rgba(17,17,17,.015)",
+};
+const TD: React.CSSProperties = { padding: "0 12px", height: "40px", verticalAlign: "middle", fontSize: ".75rem", color: "#111827" };
+const TD_M: React.CSSProperties = { padding: "0 12px", height: "40px", verticalAlign: "middle", fontSize: ".72rem", color: "#4B5563" };
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function MembersPage() {
   const [members,  setMembers]  = useState<Member[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [search,   setSearch]   = useState("");
+  const [openId,   setOpenId]   = useState<string | null>(null);
   const [showReg,  setShowReg]  = useState(false);
   const [payTarget,  setPayTarget]  = useState<Member | null>(null);
   const [flagTarget, setFlagTarget] = useState<Member | null>(null);
+
+  function toggleExpand(id: string) { setOpenId(prev => prev === id ? null : id); }
 
   function load() {
     setLoading(true);
@@ -363,10 +378,12 @@ export default function MembersPage() {
 
   useEffect(() => { load(); }, []);
 
-  const filtered = members.filter((m) => {
-    const q = search.trim().toLowerCase();
-    return !q || m.name.toLowerCase().includes(q) || m.phone.includes(q);
-  });
+  const q = search.trim().toLowerCase();
+  const filtered = members.filter((m) =>
+    !q || m.name.toLowerCase().includes(q) || m.phone.includes(q) ||
+    (m.email ?? "").toLowerCase().includes(q) ||
+    (m.profession ?? "").toLowerCase().includes(q)
+  );
 
   const expiringSoon   = members.filter((m) => m.due_date && daysUntil(m.due_date) >= 0 && daysUntil(m.due_date) <= 5).length;
   const hasOutstanding = members.filter((m) => m.outstanding > 0).length;
@@ -421,69 +438,172 @@ export default function MembersPage() {
           </div>
         </div>
       ) : (
-        <div className="card">
-          <div style={{ padding: "10px 14px 6px", fontSize: ".72rem", color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>
+        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ padding: "8px 14px 6px", fontSize: ".72rem", color: "var(--muted)", borderBottom: "1px solid var(--border)", background: "#fafafa" }}>
             {filtered.length} member{filtered.length !== 1 ? "s" : ""}
             {search && <> matching "<strong style={{ color: "var(--dark)" }}>{search}</strong>"</>}
           </div>
-          <div className="tbl-wrap">
-            <table>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr>
-                  <th>Member</th>
-                  <th>Paid This Period</th>
-                  <th>Outstanding</th>
-                  <th>Duration</th>
-                  <th>Expires</th>
-                  <th>Actions</th>
+                <tr style={{ borderBottom: "1px solid rgba(17,17,17,.08)" }}>
+                  <th style={TH}>Member</th>
+                  <th style={TH}>Email</th>
+                  <th style={TH}>Profession</th>
+                  <th style={TH}>Paid (Period)</th>
+                  <th style={TH}>Method</th>
+                  <th style={TH}>Sub Start</th>
+                  <th style={TH}>Sub End</th>
+                  <th style={TH}>Days</th>
+                  <th style={TH}>Status</th>
+                  <th style={TH}>Recorded By</th>
+                  <th style={TH}>Registered</th>
+                  <th style={TH}>Actions</th>
+                  <th style={{ ...TH, width: 28 }} />
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((m) => (
-                  <tr key={m.id} style={{ background: m.outstanding > 0 ? "rgba(220,38,38,.02)" : undefined }}>
-                    <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-                        <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "rgba(193,68,14,.08)", border: "1px solid rgba(193,68,14,.18)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", fontWeight: 700, color: "var(--teal2)", flexShrink: 0 }}>
-                          {initials(m.name)}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: 600, color: "var(--dark)" }}>{m.name}</div>
-                          <div style={{ fontSize: ".68rem", color: "var(--muted)" }}>{m.phone}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ fontWeight: 600, color: "var(--dark)" }}>
-                      KES {m.period_paid.toLocaleString()}
-                      <div style={{ fontSize: ".65rem", color: "var(--muted)", fontWeight: 400 }}>{METHOD_LABELS[m.method] ?? m.method}</div>
-                    </td>
-                    <td>
-                      {m.outstanding > 0
-                        ? <span style={{ color: "#dc2626", fontWeight: 700, fontSize: ".82rem" }}>KES {m.outstanding.toLocaleString()}</span>
-                        : <span style={{ color: "#16a34a", fontSize: ".78rem" }}>Cleared</span>
-                      }
-                    </td>
-                    <td style={{ fontSize: ".78rem", color: "var(--muted)" }}>{memberSince(m.payment_date)}</td>
-                    <td><DueBadge due={m.due_date} /></td>
-                    <td>
-                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                        {m.outstanding > 0 && m.profile_id && (
-                          <button onClick={() => setPayTarget(m)} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 10px", borderRadius: "6px", fontSize: ".72rem", fontWeight: 600, cursor: "pointer", background: "rgba(180,131,9,.08)", border: "1px solid rgba(180,131,9,.25)", color: "#b45309" }}>
-                            <i className="fas fa-plus-circle" /> Payment
-                          </button>
-                        )}
-                        <a href={waLink(m.phone, m.name, m.due_date)} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 10px", borderRadius: "6px", fontSize: ".72rem", fontWeight: 600, textDecoration: "none", background: "rgba(37,211,102,.08)", border: "1px solid rgba(37,211,102,.25)", color: "#15803d" }}>
-                          <i className="fab fa-whatsapp" /> Remind
-                        </a>
-                        <Link href={`/dashboard/receptionist/member-receipt/${m.profile_id ?? m.id}`} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 10px", borderRadius: "6px", fontSize: ".72rem", fontWeight: 600, textDecoration: "none", background: "rgba(17,17,17,.04)", border: "1px solid rgba(17,17,17,.12)", color: "var(--muted)" }}>
-                          <i className="fas fa-receipt" /> Receipt
-                        </Link>
-                        <button onClick={() => setFlagTarget(m)} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 10px", borderRadius: "6px", fontSize: ".72rem", fontWeight: 600, cursor: "pointer", background: "rgba(220,38,38,.06)", border: "1px solid rgba(220,38,38,.2)", color: "#dc2626" }}>
-                          <i className="fas fa-flag" /> Flag
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((m) => {
+                  const days = m.due_date ? daysUntil(m.due_date) : null;
+                  const isOpen = openId === m.id;
+                  return (
+                    <React.Fragment key={m.id}>
+                      <tr
+                        style={{ borderBottom: isOpen ? "none" : "1px solid rgba(17,17,17,.045)", cursor: "pointer", transition: "background .08s", background: m.outstanding > 0 ? "rgba(220,38,38,.018)" : "transparent" }}
+                        onClick={() => toggleExpand(m.id)}
+                        onMouseEnter={(e) => { if (m.outstanding <= 0) (e.currentTarget as HTMLElement).style.background = "rgba(17,17,17,.018)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = m.outstanding > 0 ? "rgba(220,38,38,.018)" : "transparent"; }}
+                      >
+                        {/* Member */}
+                        <td style={TD} onClick={(e) => e.stopPropagation()}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "9px", whiteSpace: "nowrap" }}>
+                            <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: "rgba(193,68,14,.08)", border: "1px solid rgba(193,68,14,.18)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".6rem", fontWeight: 700, color: "var(--teal2)", flexShrink: 0 }}>
+                              {initials(m.name)}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 600, color: "var(--dark)", fontSize: ".8rem" }}>{m.name}</div>
+                              <div style={{ fontSize: ".68rem", color: "var(--muted)" }}>{m.phone}</div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Email */}
+                        <td style={{ ...TD_M, maxWidth: "150px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {m.email || <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
+                        </td>
+
+                        {/* Profession */}
+                        <td style={{ ...TD_M, whiteSpace: "nowrap" }}>
+                          {m.profession || <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
+                        </td>
+
+                        {/* Paid */}
+                        <td style={{ ...TD, fontWeight: 700, whiteSpace: "nowrap" }}>
+                          {m.period_paid > 0
+                            ? <span style={{ color: "#16a34a" }}>KES {m.period_paid.toLocaleString()}</span>
+                            : <span style={{ color: "rgba(17,17,17,.25)", fontWeight: 400 }}>—</span>}
+                        </td>
+
+                        {/* Method */}
+                        <td style={TD_M}>
+                          {m.method
+                            ? <span style={{ display: "inline-flex", fontSize: ".68rem", fontWeight: 600, background: "rgba(17,17,17,.05)", color: "#374151", padding: "2px 7px", borderRadius: "100px", whiteSpace: "nowrap" }}>
+                                {METHOD_LABELS[m.method] ?? m.method}
+                              </span>
+                            : <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
+                        </td>
+
+                        {/* Sub Start */}
+                        <td style={{ ...TD_M, whiteSpace: "nowrap" }}>
+                          {m.sub_start ? fmtDate(m.sub_start) : <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
+                        </td>
+
+                        {/* Sub End */}
+                        <td style={{ ...TD_M, whiteSpace: "nowrap" }}>
+                          {m.due_date ? fmtDate(m.due_date) : <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
+                        </td>
+
+                        {/* Days */}
+                        <td style={{ ...TD, whiteSpace: "nowrap" }}>
+                          <DueBadge due={m.due_date} />
+                        </td>
+
+                        {/* Status */}
+                        <td style={TD}>
+                          {(() => {
+                            if (!m.due_date) return <span style={{ fontSize: ".68rem", color: "rgba(17,17,17,.3)" }}>—</span>;
+                            const d = daysUntil(m.due_date);
+                            if (d < 0)    return <span className="badge rd"><span className="badge-dot" />Expired</span>;
+                            if (d <= 5)   return <span className="badge gd"><span className="badge-dot" />Expiring</span>;
+                            return              <span className="badge gr"><span className="badge-dot" />Active</span>;
+                          })()}
+                        </td>
+
+                        {/* Recorded By */}
+                        <td style={{ ...TD_M, whiteSpace: "nowrap" }}>
+                          {m.recorded_by_name || <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
+                        </td>
+
+                        {/* Date Registered */}
+                        <td style={{ ...TD_M, whiteSpace: "nowrap" }}>
+                          {m.payment_created_at ? fmtDate(m.payment_created_at) : <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
+                        </td>
+
+                        {/* Actions */}
+                        <td style={{ ...TD, whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
+                          <div style={{ display: "inline-flex", gap: "4px", alignItems: "center" }}>
+                            {m.outstanding > 0 && m.profile_id && (
+                              <button onClick={() => setPayTarget(m)} title="Record Payment" style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(180,83,9,.09)", border: "none", borderRadius: "6px", cursor: "pointer", color: "#b45309", fontSize: ".65rem" }}>
+                                <i className="fas fa-plus-circle" />
+                              </button>
+                            )}
+                            <a href={waLink(m.phone, m.name, m.due_date)} target="_blank" rel="noopener noreferrer" title="WhatsApp Reminder" style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(37,211,102,.08)", border: "none", borderRadius: "6px", cursor: "pointer", color: "#15803d", fontSize: ".65rem", textDecoration: "none" }}>
+                              <i className="fab fa-whatsapp" />
+                            </a>
+                            <Link href={`/dashboard/receptionist/member-receipt/${m.profile_id ?? m.id}`} title="Print Receipt" style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6", border: "none", borderRadius: "6px", cursor: "pointer", color: "#6B7280", fontSize: ".65rem", textDecoration: "none" }}>
+                              <i className="fas fa-receipt" />
+                            </Link>
+                            <button onClick={() => setFlagTarget(m)} title="Flag for Correction" style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6", border: "none", borderRadius: "6px", cursor: "pointer", color: "#EF4444", fontSize: ".65rem" }}>
+                              <i className="fas fa-flag" />
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* Expand */}
+                        <td style={{ padding: "0 10px", height: "40px", verticalAlign: "middle", width: 28 }}>
+                          <i className="fas fa-chevron-down" style={{ fontSize: ".58rem", color: "rgba(17,17,17,.25)", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform .2s" }} />
+                        </td>
+                      </tr>
+
+                      {isOpen && (
+                        <tr style={{ borderBottom: "1px solid rgba(17,17,17,.045)", background: "rgba(17,17,17,.012)" }}>
+                          <td colSpan={13} style={{ padding: "12px 18px 14px" }}>
+                            <div style={{ display: "flex", gap: "28px", flexWrap: "wrap" }}>
+                              {m.reference && (
+                                <div>
+                                  <div style={{ fontSize: ".6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "2px" }}>Reference</div>
+                                  <div style={{ fontSize: ".78rem", color: "var(--dark)", fontFamily: "monospace" }}>{m.reference}</div>
+                                </div>
+                              )}
+                              {m.outstanding > 0 && (
+                                <div>
+                                  <div style={{ fontSize: ".6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "2px" }}>Outstanding</div>
+                                  <div style={{ fontSize: ".78rem", fontWeight: 700, color: "#dc2626" }}>KES {m.outstanding.toLocaleString()}</div>
+                                </div>
+                              )}
+                              {m.outstanding === 0 && m.period_paid > 0 && (
+                                <div>
+                                  <div style={{ fontSize: ".6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "2px" }}>Balance</div>
+                                  <div style={{ fontSize: ".78rem", fontWeight: 700, color: "#16a34a" }}>Cleared</div>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>

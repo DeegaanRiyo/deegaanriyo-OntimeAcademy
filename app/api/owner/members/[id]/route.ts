@@ -30,15 +30,21 @@ export async function DELETE(
     const { id } = params;
     if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
-    // Delete from members table (subscription record only — profile/auth account untouched)
+    // Delete payment records first (profile_id = member's profile id)
+    const { error: payError } = await admin
+      .from("membership_payments")
+      .delete()
+      .eq("profile_id", id);
+
+    if (payError) return NextResponse.json({ error: payError.message }, { status: 500 });
+
+    // Delete the membership subscription record
     const { error: deleteError } = await admin
       .from("members")
       .delete()
       .eq("id", id);
 
-    if (deleteError) {
-      return NextResponse.json({ error: deleteError.message }, { status: 500 });
-    }
+    if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
 
     return NextResponse.json({ success: true });
   } catch (err) {

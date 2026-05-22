@@ -31,7 +31,6 @@ export default async function ManagerBookingsPage() {
       spaces(id, name, slug),
       booking_payments(amount)
     `)
-    .is("deleted_at", null)
     .gte("booking_date", fromDate)
     .order("booking_date", { ascending: false })
     .order("start_time");

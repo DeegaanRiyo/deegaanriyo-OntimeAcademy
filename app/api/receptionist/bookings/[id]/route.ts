@@ -159,11 +159,27 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Soft-delete: set deleted_at instead of removing the row.
-  // booking_payments are untouched so revenue stays accurate in the overview.
+  // Delete payment records first, then the booking
+  const { error: bkPayErr } = await svc
+    .from("booking_payments")
+    .delete()
+    .eq("booking_id", params.id);
+
+  if (bkPayErr) return NextResponse.json({ error: bkPayErr.message }, { status: 500 });
+
+  const { error: spPayErr } = await svc
+    .from("space_payments")
+    .delete()
+    .eq("booking_id", params.id);
+
+  if (spPayErr && spPayErr.code !== "42P01") {
+    // 42P01 = table does not exist — safe to skip if space_payments isn't in this schema
+    return NextResponse.json({ error: spPayErr.message }, { status: 500 });
+  }
+
   const { error } = await svc
     .from("bookings")
-    .update({ deleted_at: new Date().toISOString() })
+    .delete()
     .eq("id", params.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

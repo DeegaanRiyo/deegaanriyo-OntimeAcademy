@@ -38,7 +38,6 @@ export default async function ReceptionistDashboardPage() {
       .from("bookings")
       .select("id")
       .eq("status", "confirmed")
-      .is("deleted_at", null)
       .gt("booking_date", today),
 
     // Today's confirmed + active (for active-now calculation)
@@ -46,7 +45,6 @@ export default async function ReceptionistDashboardPage() {
       .from("bookings")
       .select("id, start_time, hours, status")
       .eq("booking_date", today)
-      .is("deleted_at", null)
       .in("status", ["confirmed", "active"]),
 
     // All spaces for booking form
@@ -58,8 +56,8 @@ export default async function ReceptionistDashboardPage() {
     // Student count from student_registrations (all-time)
     service.from("student_registrations").select("id"),
 
-    // All-time booking count (exclude soft-deleted)
-    service.from("bookings").select("id").is("deleted_at", null),
+    // All-time booking count
+    service.from("bookings").select("id"),
 
     // Receptionist's display name
     service.from("profiles").select("full_name").eq("id", user!.id).single(),

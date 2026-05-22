@@ -35,11 +35,11 @@ export default async function OwnerMembersPage() {
   const [
     { data: membersRaw },
     { data: flagsRaw   },
+    { data: paymentsRaw },
   ] = await Promise.all([
     admin
-      .from("profiles")
-      .select("id, full_name, email, phone, members(is_active, subscription_start, subscription_end, profession, bio, is_public, slug)")
-      .eq("role", "member")
+      .from("members")
+      .select("id, is_active, subscription_start, subscription_end, profession, bio, is_public, slug, profile:profiles!members_id_fkey(full_name, email, phone)")
       .order("created_at", { ascending: false }),
 
     // Pending member correction notes from receptionist
@@ -52,14 +52,37 @@ export default async function OwnerMembersPage() {
       .eq("record_type", "member")
       .eq("status", "pending")
       .order("submitted_at", { ascending: false }),
+
+    // Latest payment per member
+    admin
+      .from("membership_payments")
+      .select("profile_id, amount, method, reference, created_at, recorded_by")
+      .order("created_at", { ascending: false }),
   ]);
+
+  // Build payment + recorder lookup
+  const paymentsTyped = (paymentsRaw ?? []) as any[];
+  const latestPayByProfile: Record<string, any> = {};
+  const allPaysByProfile: Record<string, any[]> = {};
+  for (const p of paymentsTyped) {
+    if (!latestPayByProfile[p.profile_id]) latestPayByProfile[p.profile_id] = p;
+    if (!allPaysByProfile[p.profile_id]) allPaysByProfile[p.profile_id] = [];
+    allPaysByProfile[p.profile_id].push(p);
+  }
+
+  const recorderIds = [...new Set(paymentsTyped.map((p) => p.recorded_by).filter(Boolean))];
+  const recorderNames: Record<string, string> = {};
+  if (recorderIds.length > 0) {
+    const { data: recProfiles } = await admin
+      .from("profiles").select("id, full_name").in("id", recorderIds as string[]);
+    for (const r of recProfiles ?? []) recorderNames[r.id] = r.full_name;
+  }
 
   const membersRawTyped = (membersRaw ?? []) as any[];
 
   let activeMemberCount = 0, expiringSoonCount = 0, expiredCount = 0;
   for (const m of membersRawTyped) {
-    const sub    = Array.isArray(m.members) ? m.members[0] : m.members;
-    const status = memberSubStatus(sub, now, sevenDaysLater);
+    const status = memberSubStatus(m, now, sevenDaysLater);
     if (status === "active")   activeMemberCount++;
     if (status === "expiring") { activeMemberCount++; expiringSoonCount++; }
     if (status === "expired")  expiredCount++;
@@ -73,23 +96,37 @@ export default async function OwnerMembersPage() {
   }));
 
   const mappedMembers: MemberRow[] = membersRawTyped.map((m: any) => {
-    const sub = Array.isArray(m.members) ? m.members[0] : m.members;
+    const p      = m.profile ?? {};
+    const latPay = latestPayByProfile[m.id] ?? null;
+    // Period paid = sum since subscription_start
+    const memberPays = allPaysByProfile[m.id] ?? [];
+    const subStart = m.subscription_start ?? null;
+    const periodPays = subStart
+      ? memberPays.filter((pay: any) => pay.created_at.slice(0, 10) >= subStart)
+      : memberPays;
+    const periodPaid = periodPays.reduce((s: number, pay: any) => s + (pay.amount ?? 0), 0);
+
     return {
-      id:        m.id,
-      full_name: m.full_name,
-      email:     m.email,
-      phone:     m.phone,
-      sub: sub ? {
-        is_active:          sub.is_active,
-        subscription_start: sub.subscription_start,
-        subscription_end:   sub.subscription_end,
-        profession:         sub.profession,
-        bio:                sub.bio,
-        is_public:          sub.is_public,
-        slug:               sub.slug,
-      } : null,
-      status: memberSubStatus(sub, now, sevenDaysLater),
-      days:   sub?.subscription_end ? daysUntil(sub.subscription_end) : null,
+      id:                 m.id,
+      full_name:          p.full_name ?? null,
+      email:              p.email     ?? null,
+      phone:              p.phone     ?? null,
+      sub: {
+        is_active:          m.is_active,
+        subscription_start: m.subscription_start,
+        subscription_end:   m.subscription_end,
+        profession:         m.profession,
+        bio:                m.bio,
+        is_public:          m.is_public,
+        slug:               m.slug,
+      },
+      status:             memberSubStatus(m, now, sevenDaysLater),
+      days:               m.subscription_end ? daysUntil(m.subscription_end) : null,
+      amount_paid:        periodPaid,
+      method:             latPay?.method    ?? null,
+      reference:          latPay?.reference ?? null,
+      recorded_by_name:   latPay?.recorded_by ? (recorderNames[latPay.recorded_by] ?? null) : null,
+      payment_created_at: latPay?.created_at ?? null,
     };
   });
 

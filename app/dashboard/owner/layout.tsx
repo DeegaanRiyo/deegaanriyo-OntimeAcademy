@@ -29,8 +29,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
   const { count: pendingBookings } = await serviceClient
     .from("bookings")
     .select("id", { count: "exact", head: true })
-    .eq("status", "pending")
-    .is("deleted_at", null);
+    .eq("status", "pending");
 
   let pendingCorrections = 0;
   try {

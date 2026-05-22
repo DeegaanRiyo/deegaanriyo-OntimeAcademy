@@ -46,7 +46,6 @@ export async function GET(req: NextRequest) {
       status, notes, booked_by, estimated_cost, created_at,
       spaces(id, name, slug)
     `)
-    .is("deleted_at", null)
     .order("booking_date", { ascending: false })
     .order("start_time");
 
@@ -66,22 +65,37 @@ export async function GET(req: NextRequest) {
   const bookingIds = bookings.map((b: any) => b.id);
   const { data: payments } = await service
     .from("booking_payments")
-    .select("booking_id, amount, method")
-    .in("booking_id", bookingIds);
+    .select("booking_id, amount, method, reference")
+    .in("booking_id", bookingIds)
+    .order("created_at", { ascending: false });
 
-  // Group payments by booking_id
-  const payMap: Record<string, { total: number; method: string | null }> = {};
+  // Group payments by booking_id — first entry is most recent
+  const payMap: Record<string, { total: number; method: string | null; reference: string | null }> = {};
   for (const p of payments ?? []) {
-    if (!payMap[p.booking_id]) payMap[p.booking_id] = { total: 0, method: null };
-    payMap[p.booking_id].total  += p.amount ?? 0;
-    payMap[p.booking_id].method  = p.method ?? null;
+    if (!payMap[p.booking_id]) payMap[p.booking_id] = { total: 0, method: null, reference: null };
+    payMap[p.booking_id].total += p.amount ?? 0;
+    if (!payMap[p.booking_id].method) {
+      payMap[p.booking_id].method    = p.method    ?? null;
+      payMap[p.booking_id].reference = p.reference ?? null;
+    }
+  }
+
+  // Resolve booked_by → profile name
+  const bookedByIds = [...new Set(bookings.map((b: any) => b.booked_by).filter(Boolean))];
+  const bookedByNames: Record<string, string> = {};
+  if (bookedByIds.length > 0) {
+    const { data: bkProfiles } = await service
+      .from("profiles").select("id, full_name").in("id", bookedByIds);
+    for (const r of bkProfiles ?? []) bookedByNames[r.id] = r.full_name;
   }
 
   const enriched = bookings.map((b: any) => ({
     ...b,
-    spaces:     Array.isArray(b.spaces) ? (b.spaces[0] ?? null) : b.spaces,
-    total_paid: payMap[b.id]?.total  ?? 0,
-    method:     payMap[b.id]?.method ?? null,
+    spaces:         Array.isArray(b.spaces) ? (b.spaces[0] ?? null) : b.spaces,
+    total_paid:     payMap[b.id]?.total     ?? 0,
+    method:         payMap[b.id]?.method    ?? null,
+    reference:      payMap[b.id]?.reference ?? null,
+    booked_by_name: b.booked_by ? (bookedByNames[b.booked_by] ?? null) : null,
   }));
 
   return NextResponse.json({ bookings: enriched });

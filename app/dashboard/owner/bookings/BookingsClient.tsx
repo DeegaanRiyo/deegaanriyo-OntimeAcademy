@@ -79,6 +79,8 @@ type Booking = {
   created_at:     string;
   spaces:         Space | null;
   total_paid:     number;
+  method:         string | null;
+  reference:      string | null;
 };
 
 type Kpi = {
@@ -175,7 +177,7 @@ export default function BookingsClient({ bookings: initialBookings, spaces, kpi 
     all: "var(--teal2)", confirmed: "#16a34a", cancelled: "#dc2626",
   };
 
-  const COL_HEADERS = ["Space", "Visitor", "Date", "Time", "Hours", "Setup", "Cost / Paid", "Status", "", ""];
+  const COL_HEADERS = ["Client", "Space", "Date", "Time", "Hours", "Cost", "Paid", "Balance", "Method", "Reference", "Status", "Booked By", "Date", "", ""];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -326,20 +328,20 @@ export default function BookingsClient({ bookings: initialBookings, spaces, kpi 
                         onMouseEnter={(e) => { if (!isToday) (e.currentTarget as HTMLElement).style.background = "rgba(17,17,17,.018)"; }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = isToday ? "rgba(0,168,107,.018)" : "transparent"; }}
                       >
-                        {/* Space */}
-                        <td style={{ padding: "0 14px", height: "44px", verticalAlign: "middle" }}>
-                          <div style={{ fontSize: ".8rem", fontWeight: 600, color: "var(--dark)", whiteSpace: "nowrap" }}>
-                            {b.spaces?.name ?? "—"}
-                          </div>
-                          {isToday && (
-                            <div style={{ fontSize: ".58rem", fontWeight: 700, color: "var(--teal2)", textTransform: "uppercase", letterSpacing: ".08em" }}>Today</div>
-                          )}
-                        </td>
-
-                        {/* Visitor */}
+                        {/* Client */}
                         <td style={{ padding: "0 14px", height: "44px", verticalAlign: "middle" }}>
                           <div style={{ fontSize: ".8rem", fontWeight: 600, color: "var(--dark)", whiteSpace: "nowrap" }}>{b.visitor_name || "—"}</div>
                           {b.visitor_phone && <div style={{ fontSize: "10px", color: "var(--muted)" }}>{b.visitor_phone}</div>}
+                        </td>
+
+                        {/* Space */}
+                        <td style={{ padding: "0 14px", height: "44px", verticalAlign: "middle" }}>
+                          <div style={{ fontSize: ".78rem", fontWeight: 600, color: "var(--teal2)", whiteSpace: "nowrap" }}>
+                            {b.spaces?.name ?? "—"}
+                          </div>
+                          {isToday && (
+                            <div style={{ fontSize: ".58rem", fontWeight: 700, color: "var(--teal2)", textTransform: "uppercase", letterSpacing: ".08em", opacity: .7 }}>Today</div>
+                          )}
                         </td>
 
                         {/* Date */}
@@ -357,27 +359,45 @@ export default function BookingsClient({ bookings: initialBookings, spaces, kpi 
                           {b.hours ? `${b.hours}h` : "—"}
                         </td>
 
-                        {/* Setup */}
-                        <td style={{ padding: "0 14px", height: "44px", verticalAlign: "middle", fontSize: ".74rem", color: "var(--muted)" }}>
-                          {SETUP_LABELS[b.setup ?? ""] ?? b.setup ?? "—"}
+                        {/* Cost */}
+                        <td style={{ padding: "0 14px", height: "44px", verticalAlign: "middle", fontSize: ".8rem", fontWeight: 700, color: "var(--dark)", whiteSpace: "nowrap" }}>
+                          {b.estimated_cost ? `KES ${b.estimated_cost.toLocaleString()}` : <span style={{ color: "rgba(17,17,17,.28)", fontWeight: 400, fontSize: ".74rem" }}>—</span>}
                         </td>
 
-                        {/* Cost / Paid */}
-                        <td style={{ padding: "0 14px", height: "44px", verticalAlign: "middle" }}>
-                          {b.estimated_cost ? (
-                            <>
-                              <div style={{ fontSize: ".8rem", fontWeight: 700, color: "var(--dark)" }}>KES {b.estimated_cost.toLocaleString()}</div>
-                              <div style={{ fontSize: "10px", fontWeight: 600, color: b.total_paid >= (b.estimated_cost ?? 0) ? "#16a34a" : "#b45309" }}>
-                                {b.total_paid > 0
-                                  ? b.total_paid >= (b.estimated_cost ?? 0)
-                                    ? "Fully paid"
-                                    : `KES ${b.total_paid.toLocaleString()} paid · owes ${balance.toLocaleString()}`
-                                  : "Unpaid"}
-                              </div>
-                            </>
+                        {/* Paid */}
+                        <td style={{ padding: "0 14px", height: "44px", verticalAlign: "middle", fontSize: ".8rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                          <span style={{ color: b.total_paid > 0 ? "#16a34a" : "rgba(17,17,17,.3)" }}>
+                            {b.total_paid > 0 ? `KES ${b.total_paid.toLocaleString()}` : "—"}
+                          </span>
+                        </td>
+
+                        {/* Balance */}
+                        <td style={{ padding: "0 14px", height: "44px", verticalAlign: "middle", whiteSpace: "nowrap" }}>
+                          {b.estimated_cost == null ? (
+                            <span style={{ fontSize: ".68rem", color: "rgba(17,17,17,.2)" }}>—</span>
+                          ) : balance <= 0 ? (
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", fontSize: ".68rem", fontWeight: 700, color: "#16a34a" }}>
+                              <i className="fas fa-check-circle" /> Paid
+                            </span>
                           ) : (
-                            <span style={{ fontSize: ".74rem", color: "rgba(17,17,17,.28)" }}>—</span>
+                            <span style={{ display: "inline-flex", padding: "2px 7px", borderRadius: "100px", fontSize: ".67rem", fontWeight: 700, background: "rgba(180,83,9,.09)", color: "#b45309" }}>
+                              KES {balance.toLocaleString()} owes
+                            </span>
                           )}
+                        </td>
+
+                        {/* Method */}
+                        <td style={{ padding: "0 14px", height: "44px", verticalAlign: "middle" }}>
+                          {b.method
+                            ? <span style={{ display: "inline-flex", fontSize: ".68rem", fontWeight: 600, background: "rgba(17,17,17,.05)", color: "#374151", padding: "2px 7px", borderRadius: "100px", whiteSpace: "nowrap" }}>
+                                {b.method === "mpesa" ? "M-Pesa" : b.method === "bank_transfer" ? "Bank" : "Cash"}
+                              </span>
+                            : <span style={{ fontSize: ".68rem", color: "rgba(17,17,17,.2)" }}>—</span>}
+                        </td>
+
+                        {/* Reference */}
+                        <td style={{ padding: "0 14px", height: "44px", verticalAlign: "middle", fontSize: ".72rem", color: "var(--muted)", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                          {b.reference || <span style={{ color: "rgba(17,17,17,.2)", fontFamily: "inherit" }}>—</span>}
                         </td>
 
                         {/* Status */}
@@ -390,6 +410,16 @@ export default function BookingsClient({ bookings: initialBookings, spaces, kpi 
                             <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: ss.color, flexShrink: 0 }} />
                             {ss.label}
                           </span>
+                        </td>
+
+                        {/* Booked By */}
+                        <td style={{ padding: "0 14px", height: "44px", verticalAlign: "middle", fontSize: ".75rem", color: "var(--dark)", whiteSpace: "nowrap" }}>
+                          {b.booked_by_name || <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
+                        </td>
+
+                        {/* Date Created */}
+                        <td style={{ padding: "0 14px", height: "44px", verticalAlign: "middle", fontSize: ".74rem", color: "var(--muted)", whiteSpace: "nowrap" }}>
+                          {fmtDate(b.created_at)}
                         </td>
 
                         {/* Delete button */}
@@ -410,20 +440,10 @@ export default function BookingsClient({ bookings: initialBookings, spaces, kpi 
                       </tr>
 
                       {/* Expanded detail row */}
-                      {isOpen && (
+                      {isOpen && (b.setup || b.notes) && (
                         <tr style={{ borderBottom: "1px solid rgba(17,17,17,.045)", background: "rgba(17,17,17,.012)", borderLeft: "3px solid var(--teal2)" }}>
-                          <td colSpan={10} style={{ padding: "12px 18px 14px" }}>
+                          <td colSpan={15} style={{ padding: "12px 18px 14px" }}>
                             <div style={{ display: "flex", gap: "32px", flexWrap: "wrap" }}>
-                              {(b.booked_by_name || b.booked_by) && (
-                                <div>
-                                  <div style={{ fontSize: ".6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "2px" }}>Booked By</div>
-                                  <div style={{ fontSize: ".78rem", color: "var(--dark)" }}>{b.booked_by_name ?? b.booked_by}</div>
-                                </div>
-                              )}
-                              <div>
-                                <div style={{ fontSize: ".6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "2px" }}>Recorded</div>
-                                <div style={{ fontSize: ".78rem", color: "var(--dark)" }}>{fmtDate(b.created_at)}</div>
-                              </div>
                               {b.setup && (
                                 <div>
                                   <div style={{ fontSize: ".6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "2px" }}>Room Setup</div>

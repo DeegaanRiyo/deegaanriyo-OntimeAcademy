@@ -30,7 +30,6 @@ export default async function OwnerBookingsPage() {
         status, notes, booked_by, estimated_cost, created_at,
         spaces(id, name, slug)
       `)
-      .is("deleted_at", null)
       .order("booking_date", { ascending: false })
       .order("start_time"),
 
@@ -40,15 +39,23 @@ export default async function OwnerBookingsPage() {
       .order("name"),
   ]);
 
-  // Fetch payment totals from booking_payments
+  // Fetch payment totals from booking_payments (most recent first for method/reference)
   const bookingIds = (bookingsRaw ?? []).map((b: any) => b.id);
   const { data: payments } = bookingIds.length > 0
-    ? await admin.from("booking_payments").select("booking_id, amount").in("booking_id", bookingIds)
+    ? await admin.from("booking_payments")
+        .select("booking_id, amount, method, reference")
+        .in("booking_id", bookingIds)
+        .order("created_at", { ascending: false })
     : { data: [] };
 
-  const payMap: Record<string, number> = {};
+  const payMap: Record<string, { total: number; method: string | null; reference: string | null }> = {};
   for (const p of payments ?? []) {
-    payMap[p.booking_id] = (payMap[p.booking_id] ?? 0) + (p.amount ?? 0);
+    if (!payMap[p.booking_id]) payMap[p.booking_id] = { total: 0, method: null, reference: null };
+    payMap[p.booking_id].total += p.amount ?? 0;
+    if (!payMap[p.booking_id].method) {
+      payMap[p.booking_id].method    = p.method    ?? null;
+      payMap[p.booking_id].reference = p.reference ?? null;
+    }
   }
 
   // Fetch receptionist names for booked_by UUIDs
@@ -67,7 +74,9 @@ export default async function OwnerBookingsPage() {
   const bookings = (bookingsRaw ?? []).map((b: any) => ({
     ...b,
     spaces:          Array.isArray(b.spaces) ? (b.spaces[0] ?? null) : b.spaces,
-    total_paid:      payMap[b.id] ?? 0,
+    total_paid:      payMap[b.id]?.total     ?? 0,
+    method:          payMap[b.id]?.method    ?? null,
+    reference:       payMap[b.id]?.reference ?? null,
     booked_by_name:  b.booked_by ? (bookedByNames[b.booked_by] ?? null) : null,
   }));
 

@@ -139,5 +139,29 @@ export async function PATCH(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Apply amount correction to source table when correct_amount differs from recorded_amount
+  const { record_type, record_id, correct_amount, recorded_amount } = data;
+  if (correct_amount != null && correct_amount !== recorded_amount) {
+    const tableMap: Record<string, string> = {
+      member:  "membership_payments",
+      booking: "booking_payments",
+      student: "student_registrations",
+    };
+    const targetTable = tableMap[record_type];
+    if (targetTable) {
+      const { error: amendErr } = await service
+        .from(targetTable)
+        .update({ amount: correct_amount })
+        .eq("id", record_id);
+      if (amendErr) {
+        return NextResponse.json(
+          { correction: data, amend_error: amendErr.message },
+          { status: 207 }
+        );
+      }
+    }
+  }
+
   return NextResponse.json({ correction: data });
 }
