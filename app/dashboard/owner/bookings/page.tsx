@@ -28,8 +28,7 @@ export default async function OwnerBookingsPage() {
         id, visitor_name, visitor_phone, setup,
         booking_date, start_time, end_time, hours,
         status, notes, booked_by, estimated_cost, created_at,
-        spaces(id, name, slug),
-        walk_in_payments(amount)
+        spaces(id, name, slug)
       `)
       .order("booking_date", { ascending: false })
       .order("start_time"),
@@ -40,15 +39,39 @@ export default async function OwnerBookingsPage() {
       .order("name"),
   ]);
 
+  // Fetch payment totals from booking_payments
+  const bookingIds = (bookingsRaw ?? []).map((b: any) => b.id);
+  const { data: payments } = bookingIds.length > 0
+    ? await admin.from("booking_payments").select("booking_id, amount").in("booking_id", bookingIds)
+    : { data: [] };
+
+  const payMap: Record<string, number> = {};
+  for (const p of payments ?? []) {
+    payMap[p.booking_id] = (payMap[p.booking_id] ?? 0) + (p.amount ?? 0);
+  }
+
+  // Fetch receptionist names for booked_by UUIDs
+  const bookedByIds = [...new Set((bookingsRaw ?? []).map((b: any) => b.booked_by).filter(Boolean))];
+  let bookedByNames: Record<string, string> = {};
+  if (bookedByIds.length > 0) {
+    const { data: recProfiles } = await admin
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", bookedByIds);
+    for (const p of recProfiles ?? []) {
+      bookedByNames[p.id] = p.full_name;
+    }
+  }
+
   const bookings = (bookingsRaw ?? []).map((b: any) => ({
     ...b,
-    spaces:     Array.isArray(b.spaces)           ? (b.spaces[0] ?? null)    : b.spaces,
-    total_paid: (b.walk_in_payments ?? []).reduce((s: number, p: any) => s + (p.amount ?? 0), 0),
+    spaces:          Array.isArray(b.spaces) ? (b.spaces[0] ?? null) : b.spaces,
+    total_paid:      payMap[b.id] ?? 0,
+    booked_by_name:  b.booked_by ? (bookedByNames[b.booked_by] ?? null) : null,
   }));
 
   // ── KPI counts ────────────────────────────────────────────────────────────────
   const total     = bookings.length;
-  const pending   = bookings.filter((b) => b.status === "pending").length;
   const confirmed = bookings.filter((b) => b.status === "confirmed").length;
   const cancelled = bookings.filter((b) => b.status === "cancelled").length;
   const todayBkgs = bookings.filter((b) => b.booking_date === today).length;
@@ -58,7 +81,7 @@ export default async function OwnerBookingsPage() {
     <BookingsClient
       bookings={bookings}
       spaces={spacesRaw ?? []}
-      kpi={{ total, pending, confirmed, cancelled, today: todayBkgs, thisMonth: monthBkgs }}
+      kpi={{ total, confirmed, cancelled, today: todayBkgs, thisMonth: monthBkgs }}
     />
   );
 }

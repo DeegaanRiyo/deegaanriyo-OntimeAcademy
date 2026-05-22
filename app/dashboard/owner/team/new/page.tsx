@@ -43,7 +43,7 @@ export default function NewTeamMemberPage() {
 
   const onSubmit = async (data: Fields) => {
     setError(null);
-    const res = await fetch("/api/admin/create-user", {
+    const res = await fetch("/api/owner/create-user", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify(data),

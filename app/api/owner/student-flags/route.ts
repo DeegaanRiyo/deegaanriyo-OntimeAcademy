@@ -10,7 +10,6 @@ function serviceClient() {
   );
 }
 
-/** GET — owner fetches all open student flags with student info */
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -21,18 +20,18 @@ export async function GET() {
     const { data: caller } = await admin
       .from("profiles").select("role").eq("id", user.id).single();
 
-    if (!["owner", "admin", "manager"].includes(caller?.role ?? "")) {
+    if (!["owner", "manager"].includes(caller?.role ?? "")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { data, error } = await admin
       .from("student_flags")
       .select(`
-        id, payment_id, message, status, created_at, resolved_at,
+        id, registration_id, message, status, created_at, resolved_at,
         flagged_by_profile:profiles!student_flags_flagged_by_fkey(full_name),
         resolved_by_profile:profiles!student_flags_resolved_by_fkey(full_name),
-        payment:walk_in_payments!student_flags_payment_id_fkey(
-          id, type, customer_name, customer_phone, notes, amount, method, created_at
+        registration:student_registrations!student_flags_registration_id_fkey(
+          id, customer_name, phone, course_name, amount, created_at
         )
       `)
       .order("created_at", { ascending: false });

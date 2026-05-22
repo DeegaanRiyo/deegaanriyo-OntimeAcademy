@@ -69,7 +69,7 @@ export default function ChangePasswordForm() {
           Change Password
         </h3>
         <p style={{ margin: 0, fontSize: ".78rem", color: "var(--muted)" }}>
-          Update your owner account password.
+          Update your account password.
         </p>
       </div>
 

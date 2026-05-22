@@ -10,35 +10,39 @@ function serviceClient() {
   );
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const admin = serviceClient();
     const { data: caller } = await admin
-      .from("profiles").select("role, full_name").eq("id", user.id).single();
+      .from("profiles").select("role").eq("id", user.id).single();
 
-    if (!["receptionist", "manager", "owner", "admin"].includes(caller?.role)) {
+    if (!["receptionist", "admin", "owner", "manager"].includes(caller?.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { data: payment, error } = await admin
-      .from("walk_in_payments")
+    // Fetch from student_registrations
+    const { data: reg, error } = await admin
+      .from("student_registrations")
       .select(`
-        id, type, customer_name, customer_phone, customer_email,
-        amount, method, reference, notes, created_at,
-        profiles!recorded_by(full_name, username)
+        *,
+        recorder:profiles!student_registrations_recorded_by_fkey(full_name)
       `)
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
-    if (error || !payment) {
-      return NextResponse.json({ error: "Receipt not found" }, { status: 404 });
+    if (error || !reg) {
+      return NextResponse.json({ error: "Registration not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ receipt: payment });
+    return NextResponse.json({ registration: reg });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unexpected error";
     return NextResponse.json({ error: message }, { status: 500 });

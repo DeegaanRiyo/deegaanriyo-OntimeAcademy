@@ -10,9 +10,10 @@ type Props = {
 
 export default function ProfileActions({ userId, isActive, name }: Props) {
 
-  const [active,        setActive]        = useState(isActive);
-  const [showPwForm,    setShowPwForm]    = useState(false);
-  const [newPassword,   setNewPassword]   = useState("");
+  const [active,          setActive]          = useState(isActive);
+  const [showPwForm,      setShowPwForm]      = useState(false);
+  const [newPassword,     setNewPassword]     = useState("");
+  const [showNewPass,     setShowNewPass]     = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const [pwLoading,     setPwLoading]     = useState(false);
@@ -33,7 +34,7 @@ export default function ProfileActions({ userId, isActive, name }: Props) {
     }
     setPwLoading(true);
     setPwError(null);
-    const res = await fetch("/api/admin/change-password", {
+    const res = await fetch("/api/owner/change-password", {
       method:  "PATCH",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ userId, newPassword }),
@@ -44,6 +45,7 @@ export default function ProfileActions({ userId, isActive, name }: Props) {
     setPwSuccess(true);
     setNewPassword("");
     setShowPwForm(false);
+    setShowNewPass(false);
     setTimeout(() => setPwSuccess(false), 3000);
   };
 
@@ -51,7 +53,7 @@ export default function ProfileActions({ userId, isActive, name }: Props) {
   const handleToggle = async () => {
     setToggleLoading(true);
     setToggleError(null);
-    const res = await fetch("/api/admin/toggle-user", {
+    const res = await fetch("/api/owner/toggle-user", {
       method:  "PATCH",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ userId, is_active: !active }),
@@ -66,7 +68,7 @@ export default function ProfileActions({ userId, isActive, name }: Props) {
   const handleDelete = async () => {
     setDeleteLoading(true);
     setDeleteError(null);
-    const res = await fetch("/api/admin/delete-user", {
+    const res = await fetch("/api/owner/delete-user", {
       method:  "DELETE",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ userId }),
@@ -98,13 +100,23 @@ export default function ProfileActions({ userId, isActive, name }: Props) {
             </button>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="New password (min. 6 characters)"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showNewPass ? "text" : "password"}
+                  className="form-input"
+                  placeholder="New password (min. 6 characters)"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  style={{ paddingRight: "40px" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPass((v) => !v)}
+                  style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: "2px" }}
+                >
+                  <i className={`fas ${showNewPass ? "fa-eye-slash" : "fa-eye"}`} style={{ fontSize: ".8rem" }} />
+                </button>
+              </div>
               {pwError && (
                 <p style={{ color: "var(--red)", fontSize: ".68rem" }}>{pwError}</p>
               )}
@@ -119,7 +131,7 @@ export default function ProfileActions({ userId, isActive, name }: Props) {
                 </button>
                 <button
                   className="btn-outline"
-                  onClick={() => { setShowPwForm(false); setNewPassword(""); setPwError(null); }}
+                  onClick={() => { setShowPwForm(false); setNewPassword(""); setPwError(null); setShowNewPass(false); }}
                 >
                   Cancel
                 </button>

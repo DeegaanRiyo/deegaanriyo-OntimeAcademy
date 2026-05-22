@@ -1,6 +1,65 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
+
+// ── DeleteMemberModal ─────────────────────────────────────────────────────────
+
+function DeleteMemberModal({ member, onClose, onDeleted }: {
+  member:    MemberRow;
+  onClose:   () => void;
+  onDeleted: (id: string) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+
+  async function confirm() {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/owner/members/${member.id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to delete");
+      onDeleted(member.id);
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: "16px" }} onClick={onClose}>
+      <div style={{ maxWidth: "380px", width: "100%", background: "#fff", borderRadius: "12px", boxShadow: "0 20px 50px rgba(0,0,0,.15)", padding: "24px" }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <h3 style={{ margin: 0, color: "#dc2626", display: "flex", alignItems: "center", gap: "8px", fontSize: ".92rem" }}>
+            <i className="fas fa-trash" />Delete Member
+          </h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "rgba(17,17,17,.4)", cursor: "pointer" }}><i className="fas fa-times" /></button>
+        </div>
+        <p style={{ fontSize: ".85rem", color: "var(--dark)", marginBottom: "8px" }}>
+          Delete membership subscription for <strong>{member.full_name || member.email}</strong>? This cannot be undone.
+        </p>
+        <p style={{ fontSize: ".75rem", color: "rgba(17,17,17,.4)", marginBottom: "4px" }}>
+          Note: only the membership subscription record will be deleted. The user account remains.
+        </p>
+        {error && (
+          <div style={{ background: "rgba(220,38,38,.08)", border: "1px solid rgba(220,38,38,.25)", borderRadius: "7px", padding: "9px 12px", color: "#dc2626", fontSize: ".8rem", marginBottom: "12px" }}>{error}</div>
+        )}
+        <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+          <button onClick={confirm} disabled={loading}
+            style={{ flex: 1, height: "38px", background: "#dc2626", color: "#fff", border: "none", borderRadius: "8px", fontWeight: 700, fontSize: ".82rem", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? .6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+            {loading ? <><i className="fas fa-spinner fa-spin" />Deleting…</> : <><i className="fas fa-trash" />Delete</>}
+          </button>
+          <button onClick={onClose}
+            style={{ flex: 1, height: "38px", background: "rgba(17,17,17,.05)", border: "1px solid rgba(17,17,17,.12)", borderRadius: "8px", fontWeight: 700, fontSize: ".82rem", color: "var(--dark)", cursor: "pointer" }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export type MemberRow = {
   id: string;
@@ -25,9 +84,13 @@ function fmtDate(iso: string | null | undefined) {
   return new Date(iso).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" });
 }
 
-export default function MemberExpandTable({ members }: { members: MemberRow[] }) {
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+export default function MemberExpandTable({ members: initialMembers }: { members: MemberRow[] }) {
+  const [localMembers,  setLocalMembers]  = useState<MemberRow[]>(initialMembers);
+  const [openId,        setOpenId]        = useState<string | null>(null);
+  const [search,        setSearch]        = useState("");
+  const [deleteTarget,  setDeleteTarget]  = useState<MemberRow | null>(null);
+
+  const members = localMembers;
 
   const q = search.trim().toLowerCase();
   const filtered = members.filter((m) =>
@@ -81,6 +144,7 @@ export default function MemberExpandTable({ members }: { members: MemberRow[] })
             <th>Days Left</th>
             <th>Status</th>
             <th style={{ width: 28 }} />
+            <th style={{ width: 28 }} />
           </tr>
         </thead>
         <tbody>
@@ -123,6 +187,15 @@ export default function MemberExpandTable({ members }: { members: MemberRow[] })
                     {m.status === "expired"  && <span className="badge rd"><span className="badge-dot" />Expired</span>}
                     {m.status === "none"     && <span className="badge"><span className="badge-dot" />No record</span>}
                   </td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => setDeleteTarget(m)}
+                      title="Delete member subscription"
+                      style={{ width: "24px", height: "24px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(220,38,38,.07)", border: "1px solid rgba(220,38,38,.15)", borderRadius: "5px", cursor: "pointer", color: "#dc2626", fontSize: ".58rem" }}
+                    >
+                      <i className="fas fa-trash" />
+                    </button>
+                  </td>
                   <td>
                     <i
                       className="fas fa-chevron-down expand-chevron"
@@ -133,7 +206,7 @@ export default function MemberExpandTable({ members }: { members: MemberRow[] })
 
                 {open && (
                   <tr key={`${m.id}-detail`} className="tbl-expand-body">
-                    <td colSpan={7}>
+                    <td colSpan={8}>
                       <div className="row-detail">
                         <div className="detail-grid">
                           <div className="detail-item">
@@ -183,6 +256,14 @@ export default function MemberExpandTable({ members }: { members: MemberRow[] })
         </tbody>
       </table>
     </div>
+
+      {deleteTarget && (
+        <DeleteMemberModal
+          member={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={(id) => setLocalMembers((prev) => prev.filter((m) => m.id !== id))}
+        />
+      )}
     </div>
   );
 }

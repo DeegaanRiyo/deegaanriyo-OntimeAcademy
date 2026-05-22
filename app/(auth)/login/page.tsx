@@ -154,7 +154,7 @@ function LoginPage() {
             <input type="checkbox" className="login-check" defaultChecked />
             <span>Remember me</span>
           </label>
-          <Link href="/forgot-password" className="login-forgot">
+          <Link href="/reset-password" className="login-forgot">
             Forgot password?
           </Link>
         </div>

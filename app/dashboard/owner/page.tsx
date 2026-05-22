@@ -59,7 +59,6 @@ export default async function OwnerDashboardPage() {
     { data: membersRaw },                // members
     { data: onlineStudentsRaw },         // platform students
     { data: bookingsMonthRaw },          // bookings this month
-    { data: pendingBookingsRaw },        // pending bookings badge
     { data: recentRegsRaw },             // recent student registrations (last 8)
     { data: issuedExpensesRaw },         // expenses
   ] = await Promise.all([
@@ -89,9 +88,6 @@ export default async function OwnerDashboardPage() {
 
     // Bookings this month
     admin.from("bookings").select("id, status").gte("created_at", monthStart),
-
-    // Pending bookings
-    admin.from("bookings").select("id").eq("status", "pending"),
 
     // Recent 8 student registrations
     admin
@@ -141,7 +137,6 @@ export default async function OwnerDashboardPage() {
 
   // ── Bookings ───────────────────────────────────────────────────────────────
   const bookingsMonth  = (bookingsMonthRaw  ?? []) as any[];
-  const pendingCount   = (pendingBookingsRaw ?? []).length;
   const confirmedCount = bookingsMonth.filter((b) => b.status === "confirmed").length;
 
   // ── 6-month trend ──────────────────────────────────────────────────────────
@@ -289,19 +284,19 @@ export default async function OwnerDashboardPage() {
         <Link href="/dashboard/owner/bookings" style={{ textDecoration: "none" }}>
           <div style={{
             background: "#fff", border: "1px solid rgba(17,17,17,.07)", borderRadius: "14px",
-            padding: "20px 22px", borderTop: `3px solid ${pendingCount > 0 ? "var(--gold)" : "#16a34a"}`, height: "100%",
+            padding: "20px 22px", borderTop: "3px solid #16a34a", height: "100%",
             cursor: "pointer",
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: `rgba(${pendingCount > 0 ? "180,131,9" : "22,163,74"},.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <i className="fas fa-calendar-check" style={{ color: pendingCount > 0 ? "var(--gold)" : "#16a34a", fontSize: ".9rem" }} />
+              <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "rgba(22,163,74,.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <i className="fas fa-calendar-check" style={{ color: "#16a34a", fontSize: ".9rem" }} />
               </div>
               <i className="fas fa-arrow-up-right-from-square" style={{ color: "rgba(17,17,17,.18)", fontSize: ".6rem" }} />
             </div>
             <div style={{ fontSize: "28px", fontWeight: 800, color: "var(--dark)", lineHeight: 1, marginTop: "12px" }}>{bookingsMonth.length}</div>
             <div style={{ fontSize: ".72rem", fontWeight: 700, color: "var(--dark)", marginTop: "4px" }}>Bookings This Month</div>
-            <div style={{ fontSize: ".65rem", color: pendingCount > 0 ? "#b45309" : "var(--muted)", marginTop: "2px", fontWeight: pendingCount > 0 ? 600 : 400 }}>
-              {pendingCount > 0 ? `${pendingCount} pending action` : `${confirmedCount} confirmed`}
+            <div style={{ fontSize: ".65rem", color: "var(--muted)", marginTop: "2px" }}>
+              {confirmedCount} confirmed
             </div>
           </div>
         </Link>

@@ -6,25 +6,15 @@ import DashboardLayout from "@/app/dashboard/_components/DashboardLayout";
 
 const NAV: NavSection[] = [
   {
-    label: "Overview",
+    label: "Menu",
     items: [
-      { href: "/dashboard/receptionist",          icon: "fa-th-large",     label: "Dashboard"  },
-    ],
-  },
-  {
-    label: "Work",
-    items: [
-      { href: "/dashboard/receptionist/bookings", icon: "fa-calendar-alt",  label: "Bookings"      },
-      { href: "/dashboard/receptionist/visitors", icon: "fa-door-open",     label: "Walk-in Log"   },
-      { href: "/dashboard/receptionist/register", icon: "fa-user-plus",     label: "Register"      },
-      { href: "/dashboard/receptionist/students", icon: "fa-user-graduate", label: "Students"      },
-      { href: "/dashboard/receptionist/members",  icon: "fa-id-card",       label: "Members"       },
-    ],
-  },
-  {
-    label: "Site",
-    items: [
-      { href: "/", icon: "fa-globe", label: "View Website", target: "_blank" },
+      { href: "/dashboard/receptionist",          icon: "fa-th-large",     label: "Overview"      },
+      { href: "/dashboard/receptionist/students", icon: "fa-user-graduate", label: "Students"     },
+      { href: "/dashboard/receptionist/members",  icon: "fa-id-card",       label: "Members"      },
+      { href: "/dashboard/receptionist/bookings", icon: "fa-calendar-alt",  label: "Bookings"     },
+      { href: "/dashboard/receptionist/visitors", icon: "fa-door-open",     label: "Walk-in"      },
+      { href: "/",                                icon: "fa-globe",          label: "View Website", target: "_blank" },
+      { href: "/dashboard/receptionist/profile",  icon: "fa-user-circle",   label: "Profile"      },
     ],
   },
 ];

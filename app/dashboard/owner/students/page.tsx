@@ -32,14 +32,15 @@ export default async function OwnerStudentsPage() {
       `)
       .order("created_at", { ascending: false }),
 
-    // Open flags linked by registration_id
+    // Open correction notes for students (pending)
     admin
-      .from("student_flags")
+      .from("correction_notes")
       .select(`
-        id, registration_id, message, status, created_at,
-        flagged_by_profile:profiles!student_flags_flagged_by_fkey(full_name)
+        id, record_id, note, status, submitted_at,
+        submitted_by_profile:profiles!correction_notes_submitted_by_fkey(full_name)
       `)
-      .eq("status", "open"),
+      .eq("record_type", "student")
+      .eq("status", "pending"),
 
     // Online platform students (self-registered)
     admin
@@ -54,18 +55,18 @@ export default async function OwnerStudentsPage() {
       .select("student_id, course_id, created_at, last_accessed_at, courses!inner(title, mode)"),
   ]);
 
-  // ── Build flag lookup: registration_id → open flags ───────────────────────
+  // ── Build flag lookup: record_id → pending correction notes ─────────────
   type FlagInfo = { id: string; message: string; flagged_by: string | null; created_at: string };
   const flagsByReg = new Map<string, FlagInfo[]>();
   for (const f of (flagsRaw ?? []) as any[]) {
-    const arr = flagsByReg.get(f.registration_id) ?? [];
+    const arr = flagsByReg.get(f.record_id) ?? [];
     arr.push({
       id:         f.id,
-      message:    f.message,
-      flagged_by: (f.flagged_by_profile as any)?.full_name ?? null,
-      created_at: f.created_at,
+      message:    f.note,
+      flagged_by: (f.submitted_by_profile as any)?.full_name ?? null,
+      created_at: f.submitted_at,
     });
-    flagsByReg.set(f.registration_id, arr);
+    flagsByReg.set(f.record_id, arr);
   }
 
   // ── Build PhysicalStudent[] from student_registrations ────────────────────

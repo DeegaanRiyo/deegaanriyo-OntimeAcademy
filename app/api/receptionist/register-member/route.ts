@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     const { data: caller } = await admin
       .from("profiles").select("role").eq("id", user.id).single();
 
-    if (!["receptionist", "admin", "owner"].includes(caller?.role)) {
+    if (!["receptionist", "owner", "manager", "admin"].includes(caller?.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -114,18 +114,18 @@ export async function POST(req: NextRequest) {
 
     // Record walk-in payment
     const { data: payment, error: payError } = await admin
-      .from("walk_in_payments")
+      .from("membership_payments")
       .insert({
-        type:           "membership",
-        customer_name:  full_name.trim(),
-        customer_phone: phone.trim(),
-        customer_email: email.trim(),
+        
+        
+        
+        
         profile_id:     userId,
-        membership_fee: membership_fee,
+        
         amount:         amountPaid,
         method,
         reference:      reference?.trim() || null,
-        notes:          notes?.trim() || null,
+        
         recorded_by:    user.id,
       })
       .select("id")
@@ -137,9 +137,10 @@ export async function POST(req: NextRequest) {
 
     // Return temp password so receptionist can hand it to the member
     return NextResponse.json({
-      success:    true,
-      member_id:  userId,
-      payment_id: payment.id,
+      success:       true,
+      member_id:     userId,
+      profile_id:    userId,
+      payment_id:    payment.id,
       temp_password: password,
     });
   } catch (err) {

@@ -21,26 +21,18 @@ export default async function ReceptionistDashboardPage() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const today    = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
-  const nowTime  = new Date().toLocaleTimeString("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit", hour12: false });
-  const todayStart = new Date(today + "T00:00:00+03:00").toISOString();
-  const todayEnd   = new Date(today + "T23:59:59+03:00").toISOString();
+  const today   = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
+  const nowTime = new Date().toLocaleTimeString("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit", hour12: false });
 
   const [
-    { data: pendingRaw    },
-    { data: confirmedRaw  },
-    { data: todayRaw      },
-    { data: spacesRaw     },
-    { data: revenueRaw    },
-    { data: membersRaw    },
-    { data: studentsRaw   },
+    { data: confirmedRaw   },
+    { data: todayRaw       },
+    { data: spacesRaw      },
+    { data: membersRaw     },
+    { data: studentsRaw    },
+    { data: allBookingsRaw },
+    { data: profileRaw     },
   ] = await Promise.all([
-    // Pending bookings
-    service
-      .from("bookings")
-      .select("id")
-      .eq("status", "pending"),
-
     // Confirmed upcoming (not today and not past)
     service
       .from("bookings")
@@ -48,7 +40,7 @@ export default async function ReceptionistDashboardPage() {
       .eq("status", "confirmed")
       .gt("booking_date", today),
 
-    // Today's confirmed + active
+    // Today's confirmed + active (for active-now calculation)
     service
       .from("bookings")
       .select("id, start_time, hours, status")
@@ -58,24 +50,17 @@ export default async function ReceptionistDashboardPage() {
     // All spaces for booking form
     service.from("spaces").select("id, name, slug").order("name"),
 
-    // Today's revenue
-    service
-      .from("walk_in_payments")
-      .select("amount")
-      .gte("created_at", todayStart)
-      .lte("created_at", todayEnd),
+    // Member count — active members
+    service.from("members").select("id").eq("is_active", true),
 
-    // Member count — one row per member in the members table
-    service
-      .from("members")
-      .select("id")
-      .eq("is_active", true),
+    // Student count from student_registrations (all-time)
+    service.from("student_registrations").select("id"),
 
-    // Student count — distinct phones in physical_class + online_class payments
-    service
-      .from("walk_in_payments")
-      .select("customer_phone")
-      .in("type", ["physical_class", "online_class"]),
+    // All-time booking count
+    service.from("bookings").select("id"),
+
+    // Receptionist's display name
+    service.from("profiles").select("full_name").eq("id", user!.id).single(),
   ]);
 
   const todayBookings = todayRaw ?? [];
@@ -85,20 +70,19 @@ export default async function ReceptionistDashboardPage() {
     return b.status === "active" || (b.status === "confirmed" && b.start_time <= nowTime && end > nowTime);
   }).length;
 
-  const todayRevenue = (revenueRaw ?? []).reduce((s: number, p: any) => s + (p.amount ?? 0), 0);
+  const userName = (profileRaw as any)?.full_name ?? "Receptionist";
 
   return (
     <ReceptionistDashboardClient
       activeCount={activeCount}
-      pendingCount={(pendingRaw ?? []).length}
-      todayCount={todayBookings.length}
+      totalBookings={(allBookingsRaw ?? []).length}
       confirmedCount={(confirmedRaw ?? []).length}
-      todayRevenue={todayRevenue}
       memberCount={(membersRaw ?? []).length}
-      studentCount={new Set((studentsRaw ?? []).map((s: any) => s.customer_phone)).size}
+      studentCount={(studentsRaw ?? []).length}
       allSpaces={spacesRaw ?? []}
       today={today}
       nowTime={nowTime}
+      userName={userName}
     />
   );
 }

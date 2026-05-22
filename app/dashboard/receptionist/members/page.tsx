@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 
 type Member = {
@@ -78,7 +78,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
   });
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
-  const [success, setSuccess] = useState<{ name: string; email: string; temp_password: string; payment_id: string } | null>(null);
+  const [success, setSuccess] = useState<{ name: string; email: string; temp_password: string; payment_id: string; profile_id: string } | null>(null);
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm((p) => ({ ...p, [k]: e.target.value }));
@@ -97,7 +97,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Failed");
-      setSuccess({ name: form.full_name, email: form.email, temp_password: json.temp_password, payment_id: json.payment_id });
+      setSuccess({ name: form.full_name, email: form.email, temp_password: json.temp_password, payment_id: json.payment_id, profile_id: json.profile_id ?? json.member_id });
       onRegistered();
     } catch (err: any) {
       setError(err.message);
@@ -132,7 +132,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
               </div>
             </div>
             <div style={{ display: "flex", gap: "10px" }}>
-              <Link href={`/dashboard/receptionist/receipt/${success.payment_id}`} className="btn-primary" style={{ textDecoration: "none", flex: 1, textAlign: "center" }}>
+              <Link href={`/dashboard/receptionist/member-receipt/${success.profile_id}`} className="btn-primary" style={{ textDecoration: "none", flex: 1, textAlign: "center" }}>
                 <i className="fas fa-receipt" style={{ marginRight: "7px" }} />Print Receipt
               </Link>
               <button onClick={() => setSuccess(null)} className="btn-outline" style={{ flex: 1 }}>Register Another</button>
@@ -254,6 +254,95 @@ function PaymentModal({ member, onClose, onDone }: { member: Member; onClose: ()
   );
 }
 
+// ─── Member Flag Modal ────────────────────────────────────────────────────────
+
+function MemberFlagModal({ member, onClose }: { member: Member; onClose: () => void }) {
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+  const [sent,    setSent]    = useState(false);
+
+  const lbl: React.CSSProperties = {
+    display: "block", fontSize: ".62rem", fontWeight: 700,
+    textTransform: "uppercase", letterSpacing: ".08em", color: "rgba(17,17,17,.4)", marginBottom: "4px",
+  };
+  const inp: React.CSSProperties = {
+    width: "100%", background: "rgba(17,17,17,.03)", border: "1px solid rgba(17,17,17,.12)",
+    borderRadius: "6px", padding: "8px 10px", color: "var(--dark)",
+    fontSize: ".8rem", outline: "none", boxSizing: "border-box",
+  };
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!message.trim()) { setError("Please describe the correction needed."); return; }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/corrections", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          record_type:  "member",
+          record_id:    member.id,
+          record_label: member.name,
+          note:         message.trim(),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to submit flag");
+      setSent(true);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: "16px" }} onClick={onClose}>
+      <div className="card" style={{ maxWidth: "420px", width: "100%", padding: "24px", gap: 0 }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <h3 style={{ margin: 0, color: "#dc2626", display: "flex", alignItems: "center", gap: "8px" }}>
+            <i className="fas fa-flag" />Flag for Correction
+          </h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><i className="fas fa-times" /></button>
+        </div>
+        {sent ? (
+          <div style={{ background: "rgba(220,38,38,.07)", border: "1px solid rgba(220,38,38,.2)", borderRadius: "10px", padding: "18px", textAlign: "center" }}>
+            <i className="fas fa-check-circle" style={{ color: "#dc2626", fontSize: "1.4rem", marginBottom: "10px", display: "block" }} />
+            <div style={{ fontWeight: 700, color: "#dc2626", marginBottom: "4px" }}>Flag sent to Owner</div>
+            <div style={{ fontSize: ".78rem", color: "var(--muted)" }}>The owner will review and make corrections.</div>
+            <button onClick={onClose} className="btn-outline" style={{ marginTop: "14px", width: "100%" }}>Close</button>
+          </div>
+        ) : (
+          <>
+            <div style={{ background: "rgba(17,17,17,.04)", borderRadius: "8px", padding: "10px 12px", marginBottom: "16px", fontSize: ".82rem", border: "1px solid rgba(17,17,17,.1)" }}>
+              <div style={{ fontWeight: 700, color: "var(--dark)" }}>{member.name}</div>
+              <div style={{ color: "var(--muted)", fontSize: ".75rem" }}>{member.phone}</div>
+            </div>
+            <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {error && <div style={{ background: "rgba(220,38,38,.08)", border: "1px solid rgba(220,38,38,.25)", borderRadius: "7px", padding: "9px 12px", color: "#dc2626", fontSize: ".8rem" }}>{error}</div>}
+              <div>
+                <label style={lbl}>Correction needed *</label>
+                <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4}
+                  placeholder="Describe what needs to be corrected — e.g. wrong amount, duplicate entry, etc."
+                  required style={{ ...inp, resize: "vertical" } as React.CSSProperties} autoFocus />
+                <div style={{ fontSize: ".68rem", color: "var(--muted)", marginTop: "4px" }}>This message will be sent to the owner for review.</div>
+              </div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button type="submit" disabled={loading}
+                  style={{ flex: 1, padding: "9px 16px", borderRadius: "8px", border: "none", background: "#dc2626", color: "#fff", fontWeight: 700, fontSize: ".85rem", cursor: "pointer", opacity: loading ? .6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
+                  {loading ? <><i className="fas fa-spinner fa-spin" />Sending…</> : <><i className="fas fa-flag" />Send Flag</>}
+                </button>
+                <button type="button" className="btn-outline" onClick={onClose} style={{ flex: 1 }}>Cancel</button>
+              </div>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function MembersPage() {
@@ -261,13 +350,14 @@ export default function MembersPage() {
   const [loading,  setLoading]  = useState(true);
   const [search,   setSearch]   = useState("");
   const [showReg,  setShowReg]  = useState(false);
-  const [payTarget, setPayTarget] = useState<Member | null>(null);
+  const [payTarget,  setPayTarget]  = useState<Member | null>(null);
+  const [flagTarget, setFlagTarget] = useState<Member | null>(null);
 
   function load() {
     setLoading(true);
-    fetch("/api/receptionist/walk-in-members")
+    fetch("/api/receptionist/members")
       .then((r) => r.json())
-      .then((j) => setMembers((j.members ?? []).filter((m: any) => m.type === "membership")))
+      .then((j) => setMembers(j.members ?? []))
       .finally(() => setLoading(false));
   }
 
@@ -384,9 +474,12 @@ export default function MembersPage() {
                         <a href={waLink(m.phone, m.name, m.due_date)} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 10px", borderRadius: "6px", fontSize: ".72rem", fontWeight: 600, textDecoration: "none", background: "rgba(37,211,102,.08)", border: "1px solid rgba(37,211,102,.25)", color: "#15803d" }}>
                           <i className="fab fa-whatsapp" /> Remind
                         </a>
-                        <Link href={`/dashboard/receptionist/receipt/${m.id}`} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 10px", borderRadius: "6px", fontSize: ".72rem", fontWeight: 600, textDecoration: "none", background: "rgba(17,17,17,.04)", border: "1px solid rgba(17,17,17,.12)", color: "var(--muted)" }}>
+                        <Link href={`/dashboard/receptionist/member-receipt/${m.profile_id ?? m.id}`} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 10px", borderRadius: "6px", fontSize: ".72rem", fontWeight: 600, textDecoration: "none", background: "rgba(17,17,17,.04)", border: "1px solid rgba(17,17,17,.12)", color: "var(--muted)" }}>
                           <i className="fas fa-receipt" /> Receipt
                         </Link>
+                        <button onClick={() => setFlagTarget(m)} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 10px", borderRadius: "6px", fontSize: ".72rem", fontWeight: 600, cursor: "pointer", background: "rgba(220,38,38,.06)", border: "1px solid rgba(220,38,38,.2)", color: "#dc2626" }}>
+                          <i className="fas fa-flag" /> Flag
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -397,8 +490,9 @@ export default function MembersPage() {
         </div>
       )}
 
-      {showReg  && <RegisterModal onClose={() => setShowReg(false)} onRegistered={load} />}
+      {showReg   && <RegisterModal onClose={() => setShowReg(false)} onRegistered={load} />}
       {payTarget && <PaymentModal member={payTarget} onClose={() => setPayTarget(null)} onDone={load} />}
+      {flagTarget && <MemberFlagModal member={flagTarget} onClose={() => setFlagTarget(null)} />}
     </div>
   );
 }

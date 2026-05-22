@@ -54,13 +54,20 @@ export default async function FinancialsPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
   const [
-    { data: allWalkInsRaw },
+    { data: bkPayRaw },
+    { data: mbrPayRaw },
+    { data: stuRegRaw },
     { data: allOnlinePaysRaw },
     { data: allExpensesRaw },
   ] = await Promise.all([
-    admin
-      .from("walk_in_payments")
-      .select("id, type, customer_name, customer_phone, amount, method, created_at, recorder:profiles!walk_in_payments_recorded_by_fkey(full_name)")
+    admin.from("booking_payments")
+      .select("id, amount, method, created_at, booking:bookings(visitor_name, visitor_phone), recorder:profiles!booking_payments_recorded_by_fkey(full_name)")
+      .order("created_at", { ascending: false }),
+    admin.from("membership_payments")
+      .select("id, amount, method, created_at, payer:profiles!membership_payments_profile_id_fkey(full_name), recorder:profiles!membership_payments_recorded_by_fkey(full_name)")
+      .order("created_at", { ascending: false }),
+    admin.from("student_registrations")
+      .select("id, customer_name, customer_phone, amount, method, created_at, recorder:profiles!student_registrations_recorded_by_fkey(full_name)")
       .order("created_at", { ascending: false }),
 
     admin
@@ -76,7 +83,26 @@ export default async function FinancialsPage() {
       .order("issued_at", { ascending: false }),
   ]);
 
-  const allWalkIns    = (allWalkInsRaw    ?? []) as any[];
+  const bkPays  = (bkPayRaw  ?? []) as any[];
+  const mbrPays = (mbrPayRaw ?? []) as any[];
+  const stuRegs = (stuRegRaw ?? []) as any[];
+  const allWalkIns = [
+    ...bkPays.map((p: any)  => ({
+      ...p, type: 'space_rental',
+      customer_name:  (p.booking as any)?.visitor_name  ?? '—',
+      customer_phone: (p.booking as any)?.visitor_phone ?? null,
+    })),
+    ...mbrPays.map((p: any) => ({
+      ...p, type: 'membership',
+      customer_name:  (p.payer as any)?.full_name ?? '—',
+      customer_phone: null,
+    })),
+    ...stuRegs.map((p: any) => ({
+      ...p, type: 'physical_class',
+      customer_name:  p.customer_name  ?? '—',
+      customer_phone: p.customer_phone ?? null,
+    })),
+  ].sort((a, b) => b.created_at.localeCompare(a.created_at));
   const allOnlinePays = (allOnlinePaysRaw ?? []) as any[];
   const allExpenses   = (allExpensesRaw   ?? []) as any[];
 

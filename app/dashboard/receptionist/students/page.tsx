@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -238,13 +239,13 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
               <div style={{ fontSize: ".75rem", color: "rgba(17,17,17,.4)", marginBottom: "20px" }}>Fully paid — no balance outstanding.</div>
             )}
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxWidth: "300px", margin: "0 auto" }}>
-              <a
+              <Link
                 href={`/dashboard/receptionist/receipt/${success.id}`}
                 target="_blank" rel="noopener noreferrer"
                 style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", height: "40px", background: "#111", color: "#fff", border: "none", borderRadius: "7px", fontWeight: 700, fontSize: ".82rem", cursor: "pointer", textDecoration: "none" }}
               >
                 <i className="fas fa-receipt" />Print Receipt
-              </a>
+              </Link>
               <div style={{ display: "flex", gap: "8px" }}>
                 <button onClick={() => { setSuccess(null); reset(); }} style={{ flex: 1, height: "38px", background: "#E8490F", color: "#fff", border: "none", borderRadius: "7px", fontWeight: 700, fontSize: ".8rem", cursor: "pointer" }}>
                   Add Another
@@ -431,9 +432,14 @@ function FlagModal({ reg, onClose, onDone }: { reg: Registration; onClose: () =>
     if (!message.trim()) { setError("Please describe the correction needed."); return; }
     setLoading(true);
     try {
-      const res = await fetch("/api/receptionist/student-flags", {
+      const res = await fetch("/api/corrections", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ registration_id: reg.id, message: message.trim() }),
+        body: JSON.stringify({
+          record_type:  "student",
+          record_id:    reg.id,
+          record_label: reg.customer_name,
+          note:         message.trim(),
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Failed to submit flag");
@@ -532,6 +538,91 @@ function CategoryCard({ icon, label, desc, count, color, active, loading, onClic
   );
 }
 
+// ─── SettleModal ──────────────────────────────────────────────────────────────
+
+function SettleModal({ reg, onClose, onSettled }: {
+  reg:       Registration;
+  onClose:   () => void;
+  onSettled: (id: string, newAmount: number) => void;
+}) {
+  const balance    = reg.total_due != null ? reg.total_due - reg.amount : 0;
+  const [amount,  setAmount]  = useState(String(balance > 0 ? balance : ""));
+  const [method,  setMethod]  = useState<PayMethod>("cash");
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+
+  const INP: React.CSSProperties = {
+    width: "100%", height: "34px", background: "#fff",
+    border: "1px solid rgba(17,17,17,.12)", borderRadius: "6px",
+    padding: "0 10px", color: "var(--dark)", fontSize: ".8rem",
+    outline: "none", boxSizing: "border-box",
+  };
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const amt = Number(amount);
+    if (!amt || amt <= 0) { setError("Enter a valid amount."); return; }
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/receptionist/students/${reg.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settle_amount: amt }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed");
+      onSettled(reg.id, json.new_amount);
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: "16px" }} onClick={onClose}>
+      <div style={{ maxWidth: "380px", width: "100%", background: "#fff", borderRadius: "12px", boxShadow: "0 20px 50px rgba(0,0,0,.15)" }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(17,17,17,.06)" }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: ".92rem", color: "var(--dark)" }}>Settle Payment</div>
+            <div style={{ fontSize: ".68rem", color: "rgba(17,17,17,.35)", marginTop: "1px" }}>{reg.customer_name}</div>
+          </div>
+          <button onClick={onClose} style={{ width: "26px", height: "26px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(17,17,17,.05)", border: "none", borderRadius: "5px", cursor: "pointer", color: "rgba(17,17,17,.4)", fontSize: ".75rem" }}>
+            <i className="fas fa-times" />
+          </button>
+        </div>
+        <form onSubmit={submit} style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+          <div style={{ background: "rgba(180,83,9,.07)", border: "1px solid rgba(180,83,9,.2)", borderRadius: "7px", padding: "9px 12px", fontSize: ".82rem", color: "#b45309", fontWeight: 700 }}>
+            Outstanding: KES {balance.toLocaleString()}
+          </div>
+          {error && (
+            <div style={{ background: "rgba(220,38,38,.05)", border: "1px solid rgba(220,38,38,.15)", borderRadius: "6px", padding: "8px 12px", color: "#dc2626", fontSize: ".75rem" }}>{error}</div>
+          )}
+          <div>
+            <label style={F_LBL}>Amount Paid (KES) *</label>
+            <input type="number" min="1" step="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 5000" required style={INP} />
+          </div>
+          <div>
+            <label style={F_LBL}>Payment Method *</label>
+            <MethodToggle value={method} onChange={setMethod} />
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button type="submit" disabled={loading}
+              style={{ flex: 1, height: "40px", background: loading ? "rgba(232,73,15,.5)" : "#E8490F", color: "#fff", border: "none", borderRadius: "8px", fontWeight: 800, fontSize: ".85rem", cursor: loading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
+              {loading ? <><i className="fas fa-spinner fa-spin" />Saving…</> : <><i className="fas fa-check" />Record Payment</>}
+            </button>
+            <button type="button" onClick={onClose}
+              style={{ flex: 1, height: "40px", background: "rgba(17,17,17,.05)", border: "none", borderRadius: "8px", fontWeight: 700, fontSize: ".8rem", color: "var(--dark)", cursor: "pointer" }}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ─── CourseEditModal ──────────────────────────────────────────────────────────
 
 function CourseEditModal({ reg, onClose, onSaved }: {
@@ -606,10 +697,11 @@ function CourseEditModal({ reg, onClose, onSaved }: {
 
 // ─── RegistrationTable ────────────────────────────────────────────────────────
 
-function RegistrationTable({ registrations, onFlag, onEdit }: {
+function RegistrationTable({ registrations, onFlag, onEdit, onSettle }: {
   registrations: Registration[];
-  onFlag: (r: Registration) => void;
-  onEdit: (r: Registration) => void;
+  onFlag:   (r: Registration) => void;
+  onEdit:   (r: Registration) => void;
+  onSettle: (r: Registration) => void;
 }) {
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
 
@@ -736,10 +828,24 @@ function RegistrationTable({ registrations, onFlag, onEdit }: {
                   {/* Actions */}
                   <td style={{ ...TD, textAlign: "right", paddingRight: "10px" }}>
                     <div style={{ display: "inline-flex", gap: 4 }}>
+                      {/* Settle — only when outstanding balance */}
+                      {balance != null && balance > 0 && (
+                        <button onClick={() => onSettle(r)} title="Settle outstanding balance"
+                          style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(180,83,9,.09)", border: "none", borderRadius: "6px", cursor: "pointer", color: "#b45309", fontSize: ".65rem", transition: "all .12s" }}>
+                          <i className="fas fa-dollar-sign" />
+                        </button>
+                      )}
+                      {/* Receipt */}
+                      <Link href={`/dashboard/receptionist/receipt/${r.id}`} target="_blank" rel="noopener noreferrer" title="View receipt"
+                        style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6", border: "none", borderRadius: "6px", cursor: "pointer", color: "#6B7280", fontSize: ".65rem", textDecoration: "none" }}>
+                        <i className="fas fa-receipt" />
+                      </Link>
+                      {/* Edit course */}
                       <button onClick={() => onEdit(r)} title="Edit course"
                         style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6", border: "none", borderRadius: "6px", cursor: "pointer", color: "#6B7280", fontSize: ".65rem", transition: "all .12s" }}>
                         <i className="fas fa-pencil-alt" />
                       </button>
+                      {/* Flag */}
                       <button onClick={() => onFlag(r)} title="Flag for correction"
                         style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6", border: "none", borderRadius: "6px", cursor: "pointer", color: "#EF4444", fontSize: ".65rem", transition: "all .12s" }}>
                         <i className="fas fa-flag" />
@@ -766,6 +872,7 @@ export default function StudentsPage() {
   const [showReg,       setShowReg]       = useState(false);
   const [flagTarget,    setFlagTarget]    = useState<Registration | null>(null);
   const [editTarget,    setEditTarget]    = useState<Registration | null>(null);
+  const [settleTarget,  setSettleTarget]  = useState<Registration | null>(null);
 
   function load() {
     setLoading(true);
@@ -880,7 +987,7 @@ export default function StudentsPage() {
             {search ? `No results for "${search}"` : `No ${activeCategory?.label} registrations this month.`}
           </div>
         ) : (
-          <RegistrationTable registrations={displayRegs} onFlag={setFlagTarget} onEdit={setEditTarget} />
+          <RegistrationTable registrations={displayRegs} onFlag={setFlagTarget} onEdit={setEditTarget} onSettle={setSettleTarget} />
         )
       )}
 
@@ -894,6 +1001,18 @@ export default function StudentsPage() {
 
       {showReg    && <RegisterModal onClose={() => setShowReg(false)} onRegistered={load} />}
       {flagTarget && <FlagModal reg={flagTarget} onClose={() => setFlagTarget(null)} onDone={() => setFlagTarget(null)} />}
+      {settleTarget && (
+        <SettleModal
+          reg={settleTarget}
+          onClose={() => setSettleTarget(null)}
+          onSettled={(id, newAmount) => {
+            setRegistrations((prev) =>
+              prev.map((r) => r.id === id ? { ...r, amount: newAmount } : r)
+            );
+            setSettleTarget(null);
+          }}
+        />
+      )}
       {editTarget && (
         <CourseEditModal
           reg={editTarget}

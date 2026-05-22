@@ -20,48 +20,38 @@ export async function POST(req: NextRequest) {
     const { data: caller } = await admin
       .from("profiles").select("role").eq("id", user.id).single();
 
-    if (!["receptionist", "admin", "owner"].includes(caller?.role)) {
+    if (!["receptionist", "owner", "manager", "admin"].includes(caller?.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await req.json() as {
-      profile_id:  string;   // existing member profile
-      amount:      number;
-      method:      "cash" | "bank_transfer";
-      reference?:  string;
-      notes?:      string;
+      profile_id: string;
+      amount:     number;
+      method:     "cash" | "mpesa" | "bank_transfer";
+      reference?: string;
     };
 
-    const { profile_id, amount, method, reference, notes } = body;
+    const { profile_id, amount, method, reference } = body;
 
     if (!profile_id || !amount || amount <= 0 || !method) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Fetch member info for customer details
     const { data: profile } = await admin
-      .from("profiles")
-      .select("full_name, phone, email")
-      .eq("id", profile_id)
-      .single();
+      .from("profiles").select("id").eq("id", profile_id).single();
 
     if (!profile) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
     const { data: payment, error: payError } = await admin
-      .from("walk_in_payments")
+      .from("membership_payments")
       .insert({
-        type:           "membership",
-        customer_name:  profile.full_name,
-        customer_phone: profile.phone ?? "",
-        customer_email: profile.email ?? null,
         profile_id,
         amount,
         method,
-        reference:      reference?.trim() || null,
-        notes:          notes?.trim() || null,
-        recorded_by:    user.id,
+        reference:   reference?.trim() || null,
+        recorded_by: user.id,
       })
       .select("id")
       .single();

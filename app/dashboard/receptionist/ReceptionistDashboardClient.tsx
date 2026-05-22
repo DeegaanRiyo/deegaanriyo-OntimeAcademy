@@ -6,15 +6,14 @@ import BookSpaceForm from "@/components/dashboard/BookSpaceForm";
 
 type Props = {
   activeCount:    number;
-  pendingCount:   number;
-  todayCount:     number;
+  totalBookings:  number;
   confirmedCount: number;
-  todayRevenue:   number;
   memberCount:    number;
   studentCount:   number;
   allSpaces:      { id: string; name: string; slug: string }[];
   today:          string;
   nowTime:        string;
+  userName:       string;
 };
 
 function fmt12(t: string) {
@@ -24,18 +23,18 @@ function fmt12(t: string) {
 
 export default function ReceptionistDashboardClient({
   activeCount,
-  pendingCount,
-  todayCount,
+  totalBookings,
   confirmedCount,
-  todayRevenue,
   memberCount,
   studentCount,
   allSpaces,
   today,
   nowTime,
+  userName,
 }: Props) {
   const [showBookForm, setShowBookForm] = useState(false);
 
+  // nowTime is already in EAT (Africa/Nairobi) — computed server-side
   const greeting = (() => {
     const h = parseInt(nowTime.split(":")[0], 10);
     if (h < 12) return "Good morning";
@@ -43,21 +42,13 @@ export default function ReceptionistDashboardClient({
     return "Good evening";
   })();
 
+  const firstName = userName.split(" ")[0];
+
   const dateLabel = new Date(today + "T00:00:00").toLocaleDateString("en-KE", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
 
   const stats = [
-    {
-      label: "Pending",
-      value: pendingCount,
-      icon: "fa-clock",
-      color: "#d97706",
-      bg: "rgba(217,119,6,.08)",
-      border: "rgba(217,119,6,.22)",
-      href: "/dashboard/receptionist/bookings",
-      note: "awaiting confirmation",
-    },
     {
       label: "Confirmed",
       value: confirmedCount,
@@ -79,24 +70,14 @@ export default function ReceptionistDashboardClient({
       note: "in progress",
     },
     {
-      label: "Today's Bookings",
-      value: todayCount,
+      label: "Total Bookings",
+      value: totalBookings,
       icon: "fa-calendar-day",
       color: "#0891b2",
       bg: "rgba(8,145,178,.08)",
       border: "rgba(8,145,178,.22)",
       href: "/dashboard/receptionist/bookings",
-      note: "total today",
-    },
-    {
-      label: "Revenue Today",
-      value: `KES ${todayRevenue.toLocaleString()}`,
-      icon: "fa-coins",
-      color: "var(--teal2)",
-      bg: "rgba(15,179,187,.08)",
-      border: "rgba(15,179,187,.22)",
-      href: null,
-      note: "walk-in payments",
+      note: "all-time",
     },
     {
       label: "Members",
@@ -127,13 +108,13 @@ export default function ReceptionistDashboardClient({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
         <div>
           <div style={{ fontSize: ".7rem", color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".12em", marginBottom: "4px" }}>
-            {dateLabel}
+            {dateLabel} · {fmt12(nowTime)} EAT
           </div>
           <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 800, color: "var(--dark)" }}>
-            {greeting} 👋
+            {greeting}, {firstName}! 👋
           </h2>
           <div style={{ fontSize: ".82rem", color: "var(--muted)", marginTop: "3px" }}>
-            Current time: <strong style={{ color: "var(--dark)" }}>{fmt12(nowTime)}</strong>
+            Welcome back — here&apos;s your reception overview.
           </div>
         </div>
 

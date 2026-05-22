@@ -26,18 +26,18 @@ export async function POST(req: NextRequest) {
     }
 
     const { registration_id, message } = await req.json() as {
-      registration_id: string;
-      message:         string;
+      registration_id?: string;
+      message:          string;
     };
 
-    if (!registration_id || !message?.trim()) {
-      return NextResponse.json({ error: "registration_id and message are required" }, { status: 400 });
+    if (!message?.trim()) {
+      return NextResponse.json({ error: "message is required" }, { status: 400 });
     }
 
     const { data, error } = await admin
       .from("student_flags")
       .insert({
-        registration_id,
+        ...(registration_id ? { registration_id } : {}),
         flagged_by: user.id,
         message:    message.trim(),
         status:     "open",

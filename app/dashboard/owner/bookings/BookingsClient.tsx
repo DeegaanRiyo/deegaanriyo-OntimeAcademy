@@ -2,6 +2,62 @@
 
 import React, { useState } from "react";
 
+// ── DeleteModal ───────────────────────────────────────────────────────────────
+
+function DeleteBookingModal({ booking, onClose, onDeleted }: {
+  booking:   { id: string; visitor_name: string | null };
+  onClose:   () => void;
+  onDeleted: (id: string) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+
+  async function confirm() {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/receptionist/bookings/${booking.id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to delete");
+      onDeleted(booking.id);
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: "16px" }} onClick={onClose}>
+      <div style={{ maxWidth: "380px", width: "100%", background: "#fff", borderRadius: "12px", boxShadow: "0 20px 50px rgba(0,0,0,.15)", padding: "24px" }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <h3 style={{ margin: 0, color: "#dc2626", display: "flex", alignItems: "center", gap: "8px", fontSize: ".92rem" }}>
+            <i className="fas fa-trash" />Delete Booking
+          </h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "rgba(17,17,17,.4)", cursor: "pointer" }}><i className="fas fa-times" /></button>
+        </div>
+        <p style={{ fontSize: ".85rem", color: "var(--dark)", marginBottom: "8px" }}>
+          Delete booking for <strong>{booking.visitor_name ?? "this visitor"}</strong>? This cannot be undone.
+        </p>
+        {error && (
+          <div style={{ background: "rgba(220,38,38,.08)", border: "1px solid rgba(220,38,38,.25)", borderRadius: "7px", padding: "9px 12px", color: "#dc2626", fontSize: ".8rem", marginBottom: "12px" }}>{error}</div>
+        )}
+        <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+          <button onClick={confirm} disabled={loading}
+            style={{ flex: 1, height: "38px", background: "#dc2626", color: "#fff", border: "none", borderRadius: "8px", fontWeight: 700, fontSize: ".82rem", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? .6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+            {loading ? <><i className="fas fa-spinner fa-spin" />Deleting…</> : <><i className="fas fa-trash" />Delete</>}
+          </button>
+          <button onClick={onClose}
+            style={{ flex: 1, height: "38px", background: "rgba(17,17,17,.05)", border: "1px solid rgba(17,17,17,.12)", borderRadius: "8px", fontWeight: 700, fontSize: ".82rem", color: "var(--dark)", cursor: "pointer" }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Space = { id: string; name: string; slug: string };
@@ -18,6 +74,7 @@ type Booking = {
   status:         string;
   notes:          string | null;
   booked_by:      string | null;
+  booked_by_name: string | null;
   estimated_cost: number | null;
   created_at:     string;
   spaces:         Space | null;
@@ -26,14 +83,13 @@ type Booking = {
 
 type Kpi = {
   total:     number;
-  pending:   number;
   confirmed: number;
   cancelled: number;
   today:     number;
   thisMonth: number;
 };
 
-type StatusFilter = "all" | "pending" | "confirmed" | "cancelled";
+type StatusFilter = "all" | "confirmed" | "cancelled";
 
 interface Props {
   bookings: Booking[];
@@ -68,11 +124,15 @@ const SETUP_LABELS: Record<string, string> = {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function BookingsClient({ bookings, spaces, kpi }: Props) {
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [spaceFilter,  setSpaceFilter]  = useState<string>("all");
-  const [search,       setSearch]       = useState("");
-  const [expanded,     setExpanded]     = useState<Set<string>>(new Set());
+export default function BookingsClient({ bookings: initialBookings, spaces, kpi }: Props) {
+  const [localBookings, setLocalBookings] = useState<Booking[]>(initialBookings);
+  const [statusFilter,  setStatusFilter]  = useState<StatusFilter>("all");
+  const [spaceFilter,   setSpaceFilter]   = useState<string>("all");
+  const [search,        setSearch]        = useState("");
+  const [expanded,      setExpanded]      = useState<Set<string>>(new Set());
+  const [deleteTarget,  setDeleteTarget]  = useState<Booking | null>(null);
+
+  const bookings = localBookings;
 
   const q = search.trim().toLowerCase();
 
@@ -101,23 +161,21 @@ export default function BookingsClient({ bookings, spaces, kpi }: Props) {
     { label: "All-time",   count: kpi.total,     color: "var(--teal2)", icon: "fa-calendar"       },
     { label: "This Month", count: kpi.thisMonth,  color: "#3b82f6",      icon: "fa-calendar-alt"   },
     { label: "Today",      count: kpi.today,      color: "#8b5cf6",      icon: "fa-clock"          },
-    { label: "Pending",    count: kpi.pending,    color: kpi.pending   > 0 ? "#b45309" : "#6b7280", icon: "fa-hourglass-half" },
     { label: "Confirmed",  count: kpi.confirmed,  color: "#16a34a",      icon: "fa-circle-check"   },
     { label: "Cancelled",  count: kpi.cancelled,  color: kpi.cancelled > 0 ? "#dc2626" : "#6b7280", icon: "fa-times-circle"  },
   ];
 
   const statusTabs: { key: StatusFilter; label: string; count: number }[] = [
     { key: "all",       label: "All Bookings", count: bookings.length },
-    { key: "pending",   label: "Pending",      count: kpi.pending     },
     { key: "confirmed", label: "Confirmed",    count: kpi.confirmed   },
     { key: "cancelled", label: "Cancelled",    count: kpi.cancelled   },
   ];
 
   const statusTabColor: Record<StatusFilter, string> = {
-    all: "var(--teal2)", pending: "#b45309", confirmed: "#16a34a", cancelled: "#dc2626",
+    all: "var(--teal2)", confirmed: "#16a34a", cancelled: "#dc2626",
   };
 
-  const COL_HEADERS = ["Space", "Visitor", "Date", "Time", "Hours", "Setup", "Cost / Paid", "Status", ""];
+  const COL_HEADERS = ["Space", "Visitor", "Date", "Time", "Hours", "Setup", "Cost / Paid", "Status", "", ""];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -131,7 +189,7 @@ export default function BookingsClient({ bookings, spaces, kpi }: Props) {
       </div>
 
       {/* ── KPI strip ───────────────────────────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "10px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "10px" }}>
         {kpiCards.map(({ label, count, color, icon }) => (
           <div key={label} style={{
             background: "#fff", border: "1px solid rgba(17,17,17,.08)", borderRadius: "12px",
@@ -334,6 +392,17 @@ export default function BookingsClient({ bookings, spaces, kpi }: Props) {
                           </span>
                         </td>
 
+                        {/* Delete button */}
+                        <td style={{ padding: "0 6px", height: "44px", verticalAlign: "middle", width: "1px" }} onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => setDeleteTarget(b)}
+                            title="Delete booking"
+                            style={{ width: "26px", height: "26px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(220,38,38,.07)", border: "1px solid rgba(220,38,38,.15)", borderRadius: "6px", cursor: "pointer", color: "#dc2626", fontSize: ".58rem" }}
+                          >
+                            <i className="fas fa-trash" />
+                          </button>
+                        </td>
+
                         {/* Expand chevron */}
                         <td style={{ padding: "0 12px", height: "44px", verticalAlign: "middle", width: "1px" }}>
                           <i className={`fas fa-chevron-${isOpen ? "up" : "down"}`} style={{ fontSize: ".58rem", color: "rgba(17,17,17,.25)" }} />
@@ -343,12 +412,12 @@ export default function BookingsClient({ bookings, spaces, kpi }: Props) {
                       {/* Expanded detail row */}
                       {isOpen && (
                         <tr style={{ borderBottom: "1px solid rgba(17,17,17,.045)", background: "rgba(17,17,17,.012)", borderLeft: "3px solid var(--teal2)" }}>
-                          <td colSpan={9} style={{ padding: "12px 18px 14px" }}>
+                          <td colSpan={10} style={{ padding: "12px 18px 14px" }}>
                             <div style={{ display: "flex", gap: "32px", flexWrap: "wrap" }}>
-                              {b.booked_by && (
+                              {(b.booked_by_name || b.booked_by) && (
                                 <div>
                                   <div style={{ fontSize: ".6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: "2px" }}>Booked By</div>
-                                  <div style={{ fontSize: ".78rem", color: "var(--dark)" }}>{b.booked_by}</div>
+                                  <div style={{ fontSize: ".78rem", color: "var(--dark)" }}>{b.booked_by_name ?? b.booked_by}</div>
                                 </div>
                               )}
                               <div>
@@ -378,6 +447,14 @@ export default function BookingsClient({ bookings, spaces, kpi }: Props) {
             </table>
           </div>
         </div>
+      )}
+
+      {deleteTarget && (
+        <DeleteBookingModal
+          booking={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={(id) => setLocalBookings((prev) => prev.filter((b) => b.id !== id))}
+        />
       )}
     </div>
   );

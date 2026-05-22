@@ -1,8 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServerClient } from "@supabase/ssr";
-
-export const dynamic = "force-dynamic";
 
 function serviceClient() {
   return createServerClient(
@@ -26,6 +24,7 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Fetch from view v_student_registrations_this_month
     const { data, error } = await admin
       .from("v_student_registrations_this_month")
       .select("*")

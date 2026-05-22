@@ -1,5 +1,6 @@
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import MemberExpandTable, { type MemberRow } from "@/app/dashboard/owner/_components/MemberExpandTable";
+import MemberFlagsSection, { type MemberFlag } from "@/app/dashboard/owner/_components/MemberFlagsSection";
 import EmptyState from "@/components/dashboard/EmptyState";
 
 export const dynamic = "force-dynamic";
@@ -31,11 +32,27 @@ export default async function OwnerMembersPage() {
   const sevenDaysLater = new Date(now);
   sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
 
-  const { data: membersRaw } = await admin
-    .from("profiles")
-    .select("id, full_name, email, phone, members(is_active, subscription_start, subscription_end, profession, bio, is_public, slug)")
-    .eq("role", "member")
-    .order("created_at", { ascending: false });
+  const [
+    { data: membersRaw },
+    { data: flagsRaw   },
+  ] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("id, full_name, email, phone, members(is_active, subscription_start, subscription_end, profession, bio, is_public, slug)")
+      .eq("role", "member")
+      .order("created_at", { ascending: false }),
+
+    // Pending member correction notes from receptionist
+    admin
+      .from("correction_notes")
+      .select(`
+        id, note, status, submitted_at,
+        submitted_by_profile:profiles!correction_notes_submitted_by_fkey(full_name)
+      `)
+      .eq("record_type", "member")
+      .eq("status", "pending")
+      .order("submitted_at", { ascending: false }),
+  ]);
 
   const membersRawTyped = (membersRaw ?? []) as any[];
 
@@ -47,6 +64,13 @@ export default async function OwnerMembersPage() {
     if (status === "expiring") { activeMemberCount++; expiringSoonCount++; }
     if (status === "expired")  expiredCount++;
   }
+
+  const memberFlags: MemberFlag[] = (flagsRaw ?? []).map((f: any) => ({
+    id:          f.id,
+    message:     f.note,
+    flagged_by:  (f.submitted_by_profile as any)?.full_name ?? null,
+    created_at:  f.submitted_at,
+  }));
 
   const mappedMembers: MemberRow[] = membersRawTyped.map((m: any) => {
     const sub = Array.isArray(m.members) ? m.members[0] : m.members;
@@ -114,6 +138,8 @@ export default async function OwnerMembersPage() {
           <strong>{expiredCount}</strong> lapsed membership{expiredCount > 1 ? "s" : ""}
         </div>
       )}
+
+      {memberFlags.length > 0 && <MemberFlagsSection flags={memberFlags} />}
 
       {mappedMembers.length === 0 ? (
         <div className="card">

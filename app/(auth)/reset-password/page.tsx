@@ -230,6 +230,11 @@ export default function ResetPasswordPage() {
           Back to login
         </Link>
       </div>
+
+      <div className="login-hint" style={{ marginTop: "10px" }}>
+        Staff account?{" "}
+        <span style={{ color: "var(--muted)" }}>Contact the owner to reset your password.</span>
+      </div>
     </div>
   );
 }

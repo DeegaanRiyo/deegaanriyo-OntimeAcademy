@@ -382,7 +382,13 @@ function ResolveFlag({ flagId, onResolved }: { flagId: string; onResolved: () =>
   const [loading, setLoading] = useState(false);
   async function resolve() {
     setLoading(true);
-    try { await fetch(`/api/owner/student-flags/${flagId}`, { method: "PATCH" }); onResolved(); }
+    try {
+      await fetch("/api/corrections", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: flagId, status: "resolved" }),
+      });
+      onResolved();
+    }
     finally { setLoading(false); }
   }
   return (

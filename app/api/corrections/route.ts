@@ -87,9 +87,10 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const status = searchParams.get("status") ?? "pending";
+  const status      = searchParams.get("status")      ?? "pending";
+  const record_type = searchParams.get("record_type") ?? null;
 
-  const { data, error } = await service
+  let query = service
     .from("correction_notes")
     .select(`
       id, record_type, record_id, record_label, note,
@@ -99,6 +100,10 @@ export async function GET(req: NextRequest) {
     `)
     .eq("status", status)
     .order("submitted_at", { ascending: false });
+
+  if (record_type) query = query.eq("record_type", record_type);
+
+  const { data, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ corrections: data ?? [] });
