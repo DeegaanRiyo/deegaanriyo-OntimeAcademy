@@ -73,11 +73,12 @@ function DueBadge({ due }: { due: string | null }) {
 // ─── Register Member Modal ────────────────────────────────────────────────────
 
 function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegistered: () => void }) {
-  const [form, setForm] = useState({ 
-    full_name: "", email: "", phone: "", profession: "", 
+  const [form, setForm] = useState({
+    full_name: "", email: "", phone: "", profession: "",
     method: "cash", reference: "", notes: "",
     membership_fee: 7500,
-    amount_paid: 7500,
+    amount_paid: 0,
+    joined_date: new Date().toLocaleDateString("en-CA"),
   });
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
@@ -94,9 +95,9 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
       const amtPaid = Number(form.amount_paid);
 
       const res  = await fetch("/api/receptionist/register-member", {
-        method: "POST", 
-        headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify({ ...form, membership_fee: fee, amount: amtPaid }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, membership_fee: fee, amount: amtPaid, joined_date: form.joined_date }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Failed");
@@ -135,10 +136,12 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
               </div>
             </div>
             <div style={{ display: "flex", gap: "10px" }}>
-              <Link href={`/dashboard/receptionist/member-receipt/${success.profile_id}`} className="btn-primary" style={{ textDecoration: "none", flex: 1, textAlign: "center" }}>
-                <i className="fas fa-receipt" style={{ marginRight: "7px" }} />Print Receipt
-              </Link>
-              <button onClick={() => setSuccess(null)} className="btn-outline" style={{ flex: 1 }}>Register Another</button>
+              {success.payment_id && (
+                <Link href={`/dashboard/receptionist/member-receipt/${success.profile_id}`} className="btn-primary" style={{ textDecoration: "none", flex: 1, textAlign: "center" }}>
+                  <i className="fas fa-receipt" style={{ marginRight: "7px" }} />Print Receipt
+                </Link>
+              )}
+              <button onClick={() => setSuccess(null)} className="btn-outline" style={{ flex: success.payment_id ? 1 : 2 }}>Register Another</button>
             </div>
           </div>
         ) : (
@@ -153,10 +156,19 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
               <div><label style={lbl}>Phone *</label><input value={form.phone} onChange={set("phone")} placeholder="07XX XXX XXX" required style={inp} /></div>
               <div><label style={lbl}>Email *</label><input type="email" value={form.email} onChange={set("email")} placeholder="jane@email.com" required style={inp} /></div>
               <div><label style={lbl}>Profession</label><input value={form.profession} onChange={set("profession")} placeholder="e.g. Freelance Designer" style={inp} /></div>
-              <div><label style={lbl}>Membership Fee (KES)</label><input value={form.membership_fee.toLocaleString()} readOnly style={{ ...inp, background: "rgba(17,17,17,.02)", color: "var(--muted)", cursor: "not-allowed" }} /></div>
-              <div><label style={lbl}>Amount Paid (KES) *</label><input type="number" value={form.amount_paid} onChange={set("amount_paid")} required style={inp} /></div>
               <div>
-                <label style={lbl}>Payment Method *</label>
+                <label style={lbl}>Joined Date *</label>
+                <input type="date" value={form.joined_date} onChange={set("joined_date")} required style={inp} />
+                <div style={{ fontSize: ".62rem", color: "var(--muted)", marginTop: "3px" }}>Subscription starts this date · expires +30 days</div>
+              </div>
+              <div><label style={lbl}>Membership Fee (KES)</label><input value={form.membership_fee.toLocaleString()} readOnly style={{ ...inp, background: "rgba(17,17,17,.02)", color: "var(--muted)", cursor: "not-allowed" }} /></div>
+              <div>
+                <label style={lbl}>Amount Paid (KES)</label>
+                <input type="number" min="0" value={form.amount_paid} onChange={set("amount_paid")} placeholder="0 if paying later" style={inp} />
+                <div style={{ fontSize: ".62rem", color: "var(--muted)", marginTop: "3px" }}>Leave 0 if member will pay later</div>
+              </div>
+              <div>
+                <label style={lbl}>Payment Method</label>
                 <select value={form.method} onChange={set("method")} style={inp}>
                   <option value="cash">Cash</option>
                   <option value="mpesa">M-Pesa</option>
@@ -168,16 +180,18 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
             </div>
             <div style={{ marginTop: "-4px" }}>
               {(() => {
-                const bal = Number(form.membership_fee) - Number(form.amount_paid);
-                if (bal > 0) return <div style={{ color: "#dc2626", fontSize: ".82rem", fontWeight: 700 }}>Balance Due: KES {bal.toLocaleString()}</div>;
+                const paid = Number(form.amount_paid) || 0;
+                const bal  = Number(form.membership_fee) - paid;
+                if (paid === 0) return <div style={{ color: "#b45309", fontSize: ".82rem", fontWeight: 700 }}>⚠ No payment — KES {Number(form.membership_fee).toLocaleString()} due later</div>;
+                if (bal > 0)   return <div style={{ color: "#dc2626", fontSize: ".82rem", fontWeight: 700 }}>Balance Due: KES {bal.toLocaleString()}</div>;
                 if (bal === 0) return <div style={{ color: "#16a34a", fontSize: ".82rem", fontWeight: 700 }}>✓ Fully Paid</div>;
-                return <div style={{ color: "#b45309", fontSize: ".82rem", fontWeight: 700 }}>Overpaid by KES {Math.abs(bal).toLocaleString()}</div>;
+                return              <div style={{ color: "#b45309", fontSize: ".82rem", fontWeight: 700 }}>Overpaid by KES {Math.abs(bal).toLocaleString()}</div>;
               })()}
             </div>
             <div><label style={lbl}>Notes</label><textarea value={form.notes} onChange={set("notes")} rows={2} placeholder="Any additional notes..." style={{ ...inp, resize: "vertical" }} /></div>
             <div style={{ display: "flex", gap: "10px" }}>
               <button type="submit" className="btn-primary" disabled={loading} style={{ flex: 2, border: "none", cursor: "pointer" }}>
-                {loading ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: "7px" }} />Registering…</> : <><i className="fas fa-id-card" style={{ marginRight: "7px" }} />Register Member · KES {Number(form.amount_paid).toLocaleString()}</>}
+                {loading ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: "7px" }} />Registering…</> : <><i className="fas fa-id-card" style={{ marginRight: "7px" }} />{Number(form.amount_paid) > 0 ? `Register Member · KES ${Number(form.amount_paid).toLocaleString()} paid` : "Register Member · Payment Pending"}</>}
               </button>
               <button type="button" className="btn-outline" onClick={onClose} style={{ flex: 1 }}>Cancel</button>
             </div>
