@@ -70,8 +70,12 @@ export default async function OwnerDashboardPage() {
   const [
     { data: studentRegsMonthRaw },       // this-month student registrations (revenue + counts)
     { data: onlinePaysRaw },             // this-month online platform payments
+    { data: bookingPaysMonthRaw },       // this-month booking payments (space revenue)
+    { data: memberPaysMonthRaw },        // this-month membership payments
     { data: allStudentRegsRaw },         // all-time student regs (6-month trend)
     { data: allOnlinePaysRaw },          // all-time online pays (6-month trend)
+    { data: allBookingPaysRaw },         // all-time booking pays (6-month trend)
+    { data: allMemberPaysRaw },          // all-time membership pays (6-month trend)
     { data: staffRaw },                  // team
     { data: membersRaw },                // members
     { data: onlineStudentsRaw },         // platform students
@@ -88,11 +92,23 @@ export default async function OwnerDashboardPage() {
     // This month: online platform payments
     admin.from("payments").select("id, amount").eq("status", "paid").gte("created_at", monthStart),
 
+    // This month: booking payments (space rentals)
+    admin.from("booking_payments").select("id, amount").gte("created_at", monthStart),
+
+    // This month: membership payments
+    admin.from("membership_payments").select("id, amount").gte("created_at", monthStart),
+
     // All-time: student regs for trend + counts
     admin.from("student_registrations").select("id, student_type, amount, created_at").order("created_at", { ascending: false }),
 
     // All-time: online pays for trend
     admin.from("payments").select("id, amount, created_at").eq("status", "paid").order("created_at", { ascending: false }),
+
+    // All-time: booking pays for trend
+    admin.from("booking_payments").select("id, amount, created_at").order("created_at", { ascending: false }),
+
+    // All-time: membership pays for trend
+    admin.from("membership_payments").select("id, amount, created_at").order("created_at", { ascending: false }),
 
     // Staff
     admin.from("profiles").select("id, role").in("role", ["manager", "receptionist", "teacher", "social_media"]),
@@ -120,10 +136,14 @@ export default async function OwnerDashboardPage() {
   // ── Revenue calcs ──────────────────────────────────────────────────────────
   const studentRegsMonth = (studentRegsMonthRaw ?? []) as any[];
   const onlinePays       = (onlinePaysRaw       ?? []) as any[];
+  const bookingPays      = (bookingPaysMonthRaw  ?? []) as any[];
+  const memberPays       = (memberPaysMonthRaw   ?? []) as any[];
 
   const walkInTotal   = studentRegsMonth.reduce((s, r) => s + (r.amount ?? 0), 0);
   const onlineTotal   = onlinePays.reduce((s, p) => s + (p.amount ?? 0), 0);
-  const grandTotal    = walkInTotal + onlineTotal;
+  const spaceTotal    = bookingPays.reduce((s, p) => s + (p.amount ?? 0), 0);
+  const memberTotal   = memberPays.reduce((s, p) => s + (p.amount ?? 0), 0);
+  const grandTotal    = walkInTotal + onlineTotal + spaceTotal + memberTotal;
   const totalExpenses = (issuedExpensesRaw ?? []).reduce((s, e: any) => s + (e.amount ?? 0), 0);
   const netRevenue    = grandTotal - totalExpenses;
 
@@ -157,17 +177,18 @@ export default async function OwnerDashboardPage() {
   const confirmedCount = bookingsMonth.filter((b) => b.status === "confirmed").length;
 
   // ── 6-month trend ──────────────────────────────────────────────────────────
-  const allStudentRegs = (allStudentRegsRaw ?? []) as any[];
-  const allOnlinePays  = (allOnlinePaysRaw  ?? []) as any[];
+  const allStudentRegs  = (allStudentRegsRaw  ?? []) as any[];
+  const allOnlinePays   = (allOnlinePaysRaw   ?? []) as any[];
+  const allBookingPays  = (allBookingPaysRaw  ?? []) as any[];
+  const allMemberPays   = (allMemberPaysRaw   ?? []) as any[];
 
-  const monthlyMap: Record<string, { label: string; walkIn: number; online: number }> = {};
+  const monthlyMap: Record<string, { label: string; walkIn: number; online: number; spaces: number; members: number }> = {};
   for (let i = 5; i >= 0; i--) {
     const d   = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     monthlyMap[key] = {
       label: d.toLocaleDateString("en-KE", { month: "short", year: "2-digit" }),
-      walkIn: 0,
-      online: 0,
+      walkIn: 0, online: 0, spaces: 0, members: 0,
     };
   }
   for (const r of allStudentRegs) {
@@ -178,15 +199,25 @@ export default async function OwnerDashboardPage() {
     const key = (p.created_at as string).slice(0, 7);
     if (monthlyMap[key]) monthlyMap[key].online += p.amount ?? 0;
   }
+  for (const p of allBookingPays) {
+    const key = (p.created_at as string).slice(0, 7);
+    if (monthlyMap[key]) monthlyMap[key].spaces += p.amount ?? 0;
+  }
+  for (const p of allMemberPays) {
+    const key = (p.created_at as string).slice(0, 7);
+    if (monthlyMap[key]) monthlyMap[key].members += p.amount ?? 0;
+  }
   const monthlyRows = Object.values(monthlyMap);
-  const maxMonthly  = Math.max(...monthlyRows.map((r) => r.walkIn + r.online), 1);
+  const maxMonthly  = Math.max(...monthlyRows.map((r) => r.walkIn + r.online + r.spaces + r.members), 1);
 
   // ── Revenue breakdown ──────────────────────────────────────────────────────
   const categories = [
-    { label: "New Students",    amount: newRev,     color: "#E8490F",      pct: grandTotal > 0 ? Math.round((newRev    / grandTotal) * 100) : 0 },
-    { label: "Current / Old",   amount: oldRev,     color: "#16a34a",      pct: grandTotal > 0 ? Math.round((oldRev    / grandTotal) * 100) : 0 },
-    { label: "Zoom / Virtual",  amount: zoomRev,    color: "#7c3aed",      pct: grandTotal > 0 ? Math.round((zoomRev   / grandTotal) * 100) : 0 },
-    { label: "Online Courses",  amount: onlineTotal, color: "#8b5cf6",     pct: grandTotal > 0 ? Math.round((onlineTotal / grandTotal) * 100) : 0 },
+    { label: "New Students",    amount: newRev,      color: "#E8490F",  pct: grandTotal > 0 ? Math.round((newRev      / grandTotal) * 100) : 0 },
+    { label: "Current / Old",   amount: oldRev,      color: "#16a34a",  pct: grandTotal > 0 ? Math.round((oldRev      / grandTotal) * 100) : 0 },
+    { label: "Zoom / Virtual",  amount: zoomRev,     color: "#7c3aed",  pct: grandTotal > 0 ? Math.round((zoomRev     / grandTotal) * 100) : 0 },
+    { label: "Online Courses",  amount: onlineTotal, color: "#8b5cf6",  pct: grandTotal > 0 ? Math.round((onlineTotal / grandTotal) * 100) : 0 },
+    { label: "Space Bookings",  amount: spaceTotal,  color: "#0ea5e9",  pct: grandTotal > 0 ? Math.round((spaceTotal  / grandTotal) * 100) : 0 },
+    { label: "Memberships",     amount: memberTotal, color: "#f59e0b",  pct: grandTotal > 0 ? Math.round((memberTotal / grandTotal) * 100) : 0 },
   ];
 
   const recentRegsBase = (recentRegsRaw ?? []) as any[];
@@ -240,14 +271,22 @@ export default async function OwnerDashboardPage() {
           <div style={{ fontSize: "30px", fontWeight: 800, color: "#fff", lineHeight: 1 }}>
             KES {grandTotal.toLocaleString()}
           </div>
-          <div style={{ display: "flex", gap: "16px", marginTop: "auto" }}>
+          <div style={{ display: "flex", gap: "14px", marginTop: "auto", flexWrap: "wrap" }}>
             <div>
               <div style={{ fontSize: "9px", color: "rgba(255,255,255,.35)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: "2px" }}>Students</div>
-              <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--accent)" }}>KES {walkInTotal.toLocaleString()}</div>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--accent)" }}>KES {walkInTotal.toLocaleString()}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: "9px", color: "rgba(255,255,255,.35)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: "2px" }}>Spaces</div>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: "#38bdf8" }}>KES {spaceTotal.toLocaleString()}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: "9px", color: "rgba(255,255,255,.35)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: "2px" }}>Members</div>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: "#fbbf24" }}>KES {memberTotal.toLocaleString()}</div>
             </div>
             <div>
               <div style={{ fontSize: "9px", color: "rgba(255,255,255,.35)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: "2px" }}>Online</div>
-              <div style={{ fontSize: "13px", fontWeight: 700, color: "#818cf8" }}>KES {onlineTotal.toLocaleString()}</div>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: "#818cf8" }}>KES {onlineTotal.toLocaleString()}</div>
             </div>
             <div style={{ marginLeft: "auto" }}>
               <div style={{ fontSize: "9px", color: "rgba(255,255,255,.35)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: "2px" }}>Net</div>
@@ -324,21 +363,23 @@ export default async function OwnerDashboardPage() {
 
       {/* ── Revenue strip ──────────────────────────────────────────────────── */}
       <div style={{
-        display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1px",
+        display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "1px",
         background: "rgba(17,17,17,.08)", borderRadius: "10px", overflow: "hidden",
         border: "1px solid rgba(17,17,17,.08)",
       }}>
         {[
-          { label: "Student Revenue",  value: `KES ${walkInTotal.toLocaleString()}`,           sub: `${studentRegsMonth.length} registration${studentRegsMonth.length !== 1 ? "s" : ""}`, color: "var(--teal2)" },
-          { label: "Online Revenue",   value: `KES ${onlineTotal.toLocaleString()}`,            sub: `${onlinePays.length} payment${onlinePays.length !== 1 ? "s" : ""}`,                   color: "#8b5cf6"      },
-          { label: "Total Expenses",   value: `KES ${totalExpenses.toLocaleString()}`,          sub: "issued this period",                                                                   color: "#f87171"      },
-          { label: "Net Revenue",      value: `KES ${Math.abs(netRevenue).toLocaleString()}`,   sub: netRevenue >= 0 ? "profit after expenses" : "deficit — review expenses",               color: netRevenue >= 0 ? "#16a34a" : "#dc2626" },
+          { label: "Students",       value: `KES ${walkInTotal.toLocaleString()}`,          sub: `${studentRegsMonth.length} registration${studentRegsMonth.length !== 1 ? "s" : ""}`, color: "var(--teal2)" },
+          { label: "Space Bookings", value: `KES ${spaceTotal.toLocaleString()}`,            sub: `${bookingPays.length} payment${bookingPays.length !== 1 ? "s" : ""}`,                color: "#0ea5e9"      },
+          { label: "Memberships",    value: `KES ${memberTotal.toLocaleString()}`,           sub: `${memberPays.length} payment${memberPays.length !== 1 ? "s" : ""}`,                  color: "#f59e0b"      },
+          { label: "Online Courses", value: `KES ${onlineTotal.toLocaleString()}`,           sub: `${onlinePays.length} payment${onlinePays.length !== 1 ? "s" : ""}`,                  color: "#8b5cf6"      },
+          { label: "Total Expenses", value: `KES ${totalExpenses.toLocaleString()}`,         sub: "issued this period",                                                                  color: "#f87171"      },
+          { label: "Net Revenue",    value: `KES ${Math.abs(netRevenue).toLocaleString()}`,  sub: netRevenue >= 0 ? "profit after expenses" : "deficit",                                color: netRevenue >= 0 ? "#16a34a" : "#dc2626" },
         ].map(({ label, value, sub, color }) => (
           <div key={label} style={{ background: "#fff", padding: "14px 18px" }}>
             <div style={{ fontSize: "9.5px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: "6px" }}>
               {label}
             </div>
-            <div style={{ fontSize: "1.05rem", fontWeight: 800, color }}>{value}</div>
+            <div style={{ fontSize: ".95rem", fontWeight: 800, color }}>{value}</div>
             <div style={{ fontSize: ".65rem", color: "var(--muted)", marginTop: "3px" }}>{sub}</div>
           </div>
         ))}
@@ -355,15 +396,20 @@ export default async function OwnerDashboardPage() {
           </div>
           <div style={{ padding: "16px 20px 20px", display: "flex", flexDirection: "column", gap: "11px" }}>
             {monthlyRows.map((row) => {
-              const total    = row.walkIn + row.online;
-              const pctTotal = Math.round((total / maxMonthly) * 100);
-              const pctWI    = total > 0 ? Math.round((row.walkIn / total) * 100) : 0;
+              const total      = row.walkIn + row.online + row.spaces + row.members;
+              const pctTotal   = Math.round((total / maxMonthly) * 100);
+              const pctWI      = total > 0 ? (row.walkIn  / total) * pctTotal : 0;
+              const pctOnline  = total > 0 ? (row.online  / total) * pctTotal : 0;
+              const pctSpaces  = total > 0 ? (row.spaces  / total) * pctTotal : 0;
+              const pctMembers = total > 0 ? (row.members / total) * pctTotal : 0;
               return (
                 <div key={row.label} style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                   <span style={{ fontSize: "10.5px", color: "var(--muted)", width: "56px", flexShrink: 0 }}>{row.label}</span>
                   <div style={{ flex: 1, height: "9px", background: "var(--dark3)", borderRadius: "5px", overflow: "hidden", display: "flex" }}>
-                    <div style={{ width: `${pctTotal * (pctWI / 100)}%`, background: "var(--teal2)", transition: "width .4s" }} />
-                    <div style={{ width: `${pctTotal * ((100 - pctWI) / 100)}%`, background: "#8b5cf6", transition: "width .4s" }} />
+                    <div style={{ width: `${pctWI}%`,      background: "var(--teal2)", transition: "width .4s" }} />
+                    <div style={{ width: `${pctSpaces}%`,  background: "#0ea5e9",      transition: "width .4s" }} />
+                    <div style={{ width: `${pctMembers}%`, background: "#f59e0b",      transition: "width .4s" }} />
+                    <div style={{ width: `${pctOnline}%`,  background: "#8b5cf6",      transition: "width .4s" }} />
                   </div>
                   <span style={{ fontSize: "11.5px", fontWeight: 700, color: "var(--dark)", minWidth: "86px", textAlign: "right" }}>
                     {total > 0 ? `KES ${total.toLocaleString()}` : <span style={{ color: "var(--muted2)", fontWeight: 400 }}>—</span>}
@@ -374,6 +420,12 @@ export default async function OwnerDashboardPage() {
             <div style={{ display: "flex", gap: "14px", marginTop: "2px", paddingTop: "8px", borderTop: "1px solid var(--border)" }}>
               <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px", color: "var(--muted)" }}>
                 <span style={{ width: 9, height: 9, borderRadius: 2, background: "var(--teal2)", display: "inline-block" }} /> Students
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px", color: "var(--muted)" }}>
+                <span style={{ width: 9, height: 9, borderRadius: 2, background: "#0ea5e9", display: "inline-block" }} /> Spaces
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px", color: "var(--muted)" }}>
+                <span style={{ width: 9, height: 9, borderRadius: 2, background: "#f59e0b", display: "inline-block" }} /> Members
               </span>
               <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px", color: "var(--muted)" }}>
                 <span style={{ width: 9, height: 9, borderRadius: 2, background: "#8b5cf6", display: "inline-block" }} /> Online
