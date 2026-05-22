@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -42,8 +43,24 @@ function memberSubStatus(sub: any, now: Date, sevenDaysLater: Date): "active" | 
   return "active";
 }
 
+function fmt12(t: string) {
+  const [h, m] = t.split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+}
+
 export default async function OwnerDashboardPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   const admin = service();
+
+  // Owner name + EAT time
+  const nowTime = new Date().toLocaleTimeString("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit", hour12: false });
+  const { data: ownerProfile } = await admin.from("profiles").select("full_name").eq("id", user!.id).single();
+  const ownerName  = (ownerProfile as any)?.full_name ?? "Owner";
+  const firstName  = ownerName.split(" ")[0];
+  const hourEAT    = parseInt(nowTime.split(":")[0], 10);
+  const greeting   = hourEAT < 12 ? "Good morning" : hourEAT < 17 ? "Good afternoon" : "Good evening";
 
   const now            = new Date();
   const monthStart     = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -194,14 +211,17 @@ export default async function OwnerDashboardPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
-      {/* ── Section label ──────────────────────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+      {/* ── Greeting header ────────────────────────────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800, color: "var(--dark)" }}>
-            Business Overview
+          <div style={{ fontSize: ".7rem", color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".12em", marginBottom: "4px" }}>
+            {fmtMonth(now.toISOString())} · {fmt12(nowTime)} EAT
+          </div>
+          <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 800, color: "var(--dark)" }}>
+            {greeting}, {firstName}! 👋
           </h2>
-          <p style={{ margin: "2px 0 0", fontSize: ".78rem", color: "var(--muted)" }}>
-            {fmtMonth(now.toISOString())} · live snapshot
+          <p style={{ margin: "3px 0 0", fontSize: ".82rem", color: "var(--muted)" }}>
+            Here&apos;s your business overview.
           </p>
         </div>
       </div>
