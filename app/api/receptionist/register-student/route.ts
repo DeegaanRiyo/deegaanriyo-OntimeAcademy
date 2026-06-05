@@ -37,13 +37,14 @@ export async function POST(req: NextRequest) {
       method:              "cash" | "mpesa" | "bank_transfer" | "both";
       reference?:          string;
       notes?:              string;
+      teachers?:           { name: string; subject: string }[];
     };
 
     const {
       student_type, customer_name, customer_phone, customer_email,
       course_name,
       course_fee_monthly, registration_fee, total_due,
-      amount, method, reference, notes,
+      amount, method, reference, notes, teachers,
     } = body;
 
     if (!student_type || !customer_name || !customer_phone || !amount || !method) {
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
         method,
         reference:           reference           ?? null,
         notes:               notes               ?? null,
+        teachers:            teachers && teachers.length > 0 ? teachers : null,
         recorded_by:         user.id,
       })
       .select("id")

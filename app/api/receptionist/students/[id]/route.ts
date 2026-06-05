@@ -33,7 +33,23 @@ export async function PATCH(
     const body = await req.json() as {
       course_name?:   string | null;
       settle_amount?: number;
+      teachers?:      { name: string; subject: string }[] | null;
     };
+
+    // ── Update teachers ───────────────────────────────────────────────────────
+    if ("teachers" in body) {
+      const teachers = Array.isArray(body.teachers) && body.teachers.length > 0
+        ? body.teachers
+        : null;
+
+      const { error } = await admin
+        .from("student_registrations")
+        .update({ teachers })
+        .eq("id", id);
+
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ success: true });
+    }
 
     // ── Record a balance payment ──────────────────────────────────────────────
     if (body.settle_amount != null) {

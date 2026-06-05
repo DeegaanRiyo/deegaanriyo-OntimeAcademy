@@ -7,6 +7,7 @@ import Link from "next/link";
 
 type StudentType = "new" | "current_old" | "zoom_virtual";
 type PayMethod   = "cash" | "mpesa" | "bank_transfer" | "both";
+type Teacher     = { name: string; subject: string };
 
 type Registration = {
   id:                  string;
@@ -27,6 +28,7 @@ type Registration = {
   created_at:          string;
   recorder_full_name:  string | null;
   recorder_role:       string | null;
+  teachers:            Teacher[] | null;
 };
 
 
@@ -146,6 +148,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
   const [method,       setMethod]       = useState<PayMethod>("cash");
   const [reference,    setReference]    = useState("");
   const [notes,        setNotes]        = useState("");
+  const [teachers,     setTeachers]     = useState<Teacher[]>([{ name: "", subject: "" }]);
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState<string | null>(null);
   const [success,      setSuccess]      = useState<{ name: string; balance: number; id: string } | null>(null);
@@ -170,6 +173,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
     setCourseFee(""); setRegFee(""); setAmountPaid("");
     setMethod("cash"); setReference(""); setNotes("");
     setStudentType("new");
+    setTeachers([{ name: "", subject: "" }]);
   }
 
   async function submit(e: React.FormEvent) {
@@ -196,6 +200,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
           method,
           reference:           reference  || undefined,
           notes:               notes      || undefined,
+          teachers:            teachers.filter((t) => t.name.trim() || t.subject.trim()).map((t) => ({ name: t.name.trim(), subject: t.subject.trim() })),
         }),
       });
       const json = await res.json();
@@ -308,6 +313,57 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
                 placeholder="e.g. Arabic, Tajweed, Quran…"
                 style={F_INP}
               />
+            </div>
+
+            {/* Teachers */}
+            <div>
+              <SectionDivider label="Teachers" />
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {teachers.map((t, i) => (
+                  <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: "8px", alignItems: "end" }}>
+                    <div>
+                      <label style={F_LBL}>Teacher Name</label>
+                      <input
+                        value={t.name}
+                        onChange={(e) => {
+                          const updated = teachers.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x);
+                          setTeachers(updated);
+                        }}
+                        placeholder="e.g. Ustadh Ali"
+                        style={F_INP}
+                      />
+                    </div>
+                    <div>
+                      <label style={F_LBL}>Subject Taught</label>
+                      <input
+                        value={t.subject}
+                        onChange={(e) => {
+                          const updated = teachers.map((x, idx) => idx === i ? { ...x, subject: e.target.value } : x);
+                          setTeachers(updated);
+                        }}
+                        placeholder="e.g. Arabic, Swahili"
+                        style={F_INP}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTeachers(teachers.filter((_, idx) => idx !== i))}
+                      disabled={teachers.length === 1}
+                      title="Remove teacher"
+                      style={{ width: "34px", height: "34px", display: "flex", alignItems: "center", justifyContent: "center", background: teachers.length === 1 ? "rgba(17,17,17,.04)" : "rgba(220,38,38,.07)", border: "none", borderRadius: "6px", cursor: teachers.length === 1 ? "default" : "pointer", color: teachers.length === 1 ? "rgba(17,17,17,.2)" : "#dc2626", fontSize: ".65rem", flexShrink: 0 }}
+                    >
+                      <i className="fas fa-minus" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setTeachers([...teachers, { name: "", subject: "" }])}
+                  style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: "5px", height: "28px", padding: "0 10px", background: "rgba(17,17,17,.04)", border: "1px dashed rgba(17,17,17,.18)", borderRadius: "6px", cursor: "pointer", color: "rgba(17,17,17,.5)", fontSize: ".72rem", fontWeight: 600 }}
+                >
+                  <i className="fas fa-plus" style={{ fontSize: ".6rem" }} />Add Another Teacher
+                </button>
+              </div>
             </div>
 
             {/* Fee breakdown */}
@@ -695,13 +751,127 @@ function CourseEditModal({ reg, onClose, onSaved }: {
   );
 }
 
+// ─── TeachersEditModal ────────────────────────────────────────────────────────
+
+function TeachersEditModal({ reg, onClose, onSaved }: {
+  reg:     Registration;
+  onClose: () => void;
+  onSaved: (id: string, teachers: Teacher[]) => void;
+}) {
+  const [teachers, setTeachers] = useState<Teacher[]>(
+    reg.teachers && reg.teachers.length > 0
+      ? reg.teachers.map((t) => ({ name: t.name, subject: t.subject }))
+      : [{ name: "", subject: "" }]
+  );
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true); setError(null);
+    const clean = teachers.filter((t) => t.name.trim() || t.subject.trim()).map((t) => ({ name: t.name.trim(), subject: t.subject.trim() }));
+    try {
+      const res  = await fetch(`/api/receptionist/students/${reg.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teachers: clean }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to save");
+      onSaved(reg.id, clean);
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70, padding: 16 }} onClick={onClose}>
+      <div style={{ maxWidth: 520, width: "100%", background: "#fff", borderRadius: 12, boxShadow: "0 20px 50px rgba(0,0,0,.15)" }} onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", borderBottom: "1px solid rgba(17,17,17,.06)" }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: ".88rem", color: "var(--dark)" }}>Assign Teachers</div>
+            <div style={{ fontSize: ".68rem", color: "rgba(17,17,17,.35)", marginTop: 1 }}>{reg.customer_name}</div>
+          </div>
+          <button onClick={onClose} style={{ width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(17,17,17,.05)", border: "none", borderRadius: 5, cursor: "pointer", color: "rgba(17,17,17,.4)", fontSize: ".75rem" }}>
+            <i className="fas fa-times" />
+          </button>
+        </div>
+
+        <form onSubmit={save} style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 14 }}>
+          {error && (
+            <div style={{ background: "rgba(220,38,38,.05)", border: "1px solid rgba(220,38,38,.15)", borderRadius: 6, padding: "8px 12px", color: "#dc2626", fontSize: ".75rem" }}>{error}</div>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {teachers.map((t, i) => (
+              <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: "8px", alignItems: "end" }}>
+                <div>
+                  {i === 0 && <label style={F_LBL}>Teacher Name</label>}
+                  <input
+                    value={t.name}
+                    onChange={(e) => setTeachers(teachers.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))}
+                    placeholder="e.g. Ustadh Ali"
+                    style={F_INP}
+                    autoFocus={i === 0}
+                  />
+                </div>
+                <div>
+                  {i === 0 && <label style={F_LBL}>Subject Taught</label>}
+                  <input
+                    value={t.subject}
+                    onChange={(e) => setTeachers(teachers.map((x, idx) => idx === i ? { ...x, subject: e.target.value } : x))}
+                    placeholder="e.g. English, Swahili"
+                    style={F_INP}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTeachers(teachers.filter((_, idx) => idx !== i))}
+                  disabled={teachers.length === 1}
+                  title="Remove"
+                  style={{ width: "34px", height: "34px", display: "flex", alignItems: "center", justifyContent: "center", background: teachers.length === 1 ? "rgba(17,17,17,.04)" : "rgba(220,38,38,.07)", border: "none", borderRadius: "6px", cursor: teachers.length === 1 ? "default" : "pointer", color: teachers.length === 1 ? "rgba(17,17,17,.2)" : "#dc2626", fontSize: ".65rem", flexShrink: 0 }}
+                >
+                  <i className="fas fa-minus" />
+                </button>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setTeachers([...teachers, { name: "", subject: "" }])}
+              style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: "5px", height: "28px", padding: "0 10px", background: "rgba(17,17,17,.04)", border: "1px dashed rgba(17,17,17,.18)", borderRadius: "6px", cursor: "pointer", color: "rgba(17,17,17,.5)", fontSize: ".72rem", fontWeight: 600 }}
+            >
+              <i className="fas fa-plus" style={{ fontSize: ".6rem" }} />Add Another Teacher
+            </button>
+          </div>
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="submit" disabled={loading}
+              style={{ flex: 1, height: 38, background: loading ? "rgba(232,73,15,.5)" : "#E8490F", color: "#fff", border: "none", borderRadius: 7, fontWeight: 700, fontSize: ".8rem", cursor: loading ? "not-allowed" : "pointer" }}>
+              {loading ? "Saving…" : "Save Teachers"}
+            </button>
+            <button type="button" onClick={onClose}
+              style={{ flex: 1, height: 38, background: "rgba(17,17,17,.05)", border: "none", borderRadius: 7, fontWeight: 700, fontSize: ".8rem", color: "var(--dark)", cursor: "pointer" }}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ─── RegistrationTable ────────────────────────────────────────────────────────
 
-function RegistrationTable({ registrations, onFlag, onEdit, onSettle }: {
-  registrations: Registration[];
-  onFlag:   (r: Registration) => void;
-  onEdit:   (r: Registration) => void;
-  onSettle: (r: Registration) => void;
+function RegistrationTable({ registrations, onFlag, onEdit, onSettle, onAssignTeachers }: {
+  registrations:    Registration[];
+  onFlag:           (r: Registration) => void;
+  onEdit:           (r: Registration) => void;
+  onSettle:         (r: Registration) => void;
+  onAssignTeachers: (r: Registration) => void;
 }) {
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
 
@@ -715,6 +885,7 @@ function RegistrationTable({ registrations, onFlag, onEdit, onSettle }: {
             <tr style={{ borderBottom: "1px solid rgba(17,17,17,.08)" }}>
               <th style={TH}>Student</th>
               <th style={TH}>Course</th>
+              <th style={TH}>Teachers</th>
               <th style={TH}>Phone</th>
               <th style={TH}>Monthly Fee</th>
               <th style={TH}>Reg Fee</th>
@@ -757,6 +928,24 @@ function RegistrationTable({ registrations, onFlag, onEdit, onSettle }: {
                     {r.course_name
                       ? <span style={{ fontWeight: 600, color: "var(--dark)" }}>{r.course_name}</span>
                       : <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>}
+                  </td>
+
+                  {/* Teachers */}
+                  <td style={TD_M}>
+                    {r.teachers && r.teachers.length > 0 ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                        {r.teachers.map((t, i) => (
+                          <div key={i} style={{ display: "flex", alignItems: "center", gap: "4px", whiteSpace: "nowrap" }}>
+                            <span style={{ fontWeight: 600, color: "var(--dark)" }}>{t.name}</span>
+                            {t.subject && (
+                              <span style={{ fontSize: ".62rem", background: "rgba(17,17,17,.06)", color: "#4B5563", borderRadius: "4px", padding: "1px 5px" }}>{t.subject}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span style={{ color: "rgba(17,17,17,.2)" }}>—</span>
+                    )}
                   </td>
 
                   <td style={TD_M}>{r.customer_phone}</td>
@@ -840,6 +1029,11 @@ function RegistrationTable({ registrations, onFlag, onEdit, onSettle }: {
                         style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6", border: "none", borderRadius: "6px", cursor: "pointer", color: "#6B7280", fontSize: ".65rem", textDecoration: "none" }}>
                         <i className="fas fa-receipt" />
                       </Link>
+                      {/* Assign teachers */}
+                      <button onClick={() => onAssignTeachers(r)} title="Assign teachers"
+                        style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: r.teachers && r.teachers.length > 0 ? "rgba(37,99,235,.1)" : "#F3F4F6", border: "none", borderRadius: "6px", cursor: "pointer", color: r.teachers && r.teachers.length > 0 ? "#2563eb" : "#6B7280", fontSize: ".65rem", transition: "all .12s" }}>
+                        <i className="fas fa-chalkboard-teacher" />
+                      </button>
                       {/* Edit course */}
                       <button onClick={() => onEdit(r)} title="Edit course"
                         style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6", border: "none", borderRadius: "6px", cursor: "pointer", color: "#6B7280", fontSize: ".65rem", transition: "all .12s" }}>
@@ -869,10 +1063,11 @@ export default function StudentsPage() {
   const [loading,       setLoading]       = useState(true);
   const [search,        setSearch]        = useState("");
   const [activeCard,    setActiveCard]    = useState<string | null>(null);
-  const [showReg,       setShowReg]       = useState(false);
-  const [flagTarget,    setFlagTarget]    = useState<Registration | null>(null);
-  const [editTarget,    setEditTarget]    = useState<Registration | null>(null);
-  const [settleTarget,  setSettleTarget]  = useState<Registration | null>(null);
+  const [showReg,         setShowReg]         = useState(false);
+  const [flagTarget,      setFlagTarget]      = useState<Registration | null>(null);
+  const [editTarget,      setEditTarget]      = useState<Registration | null>(null);
+  const [settleTarget,    setSettleTarget]    = useState<Registration | null>(null);
+  const [teachersTarget,  setTeachersTarget]  = useState<Registration | null>(null);
 
   function load() {
     setLoading(true);
@@ -987,7 +1182,7 @@ export default function StudentsPage() {
             {search ? `No results for "${search}"` : `No ${activeCategory?.label} registrations this month.`}
           </div>
         ) : (
-          <RegistrationTable registrations={displayRegs} onFlag={setFlagTarget} onEdit={setEditTarget} onSettle={setSettleTarget} />
+          <RegistrationTable registrations={displayRegs} onFlag={setFlagTarget} onEdit={setEditTarget} onSettle={setSettleTarget} onAssignTeachers={setTeachersTarget} />
         )
       )}
 
@@ -1021,6 +1216,18 @@ export default function StudentsPage() {
             setRegistrations((prev) =>
               prev.map((r) => r.id === id ? { ...r, course_name: courseName || null } : r)
             );
+          }}
+        />
+      )}
+      {teachersTarget && (
+        <TeachersEditModal
+          reg={teachersTarget}
+          onClose={() => setTeachersTarget(null)}
+          onSaved={(id, teachers) => {
+            setRegistrations((prev) =>
+              prev.map((r) => r.id === id ? { ...r, teachers: teachers.length > 0 ? teachers : null } : r)
+            );
+            setTeachersTarget(null);
           }}
         />
       )}

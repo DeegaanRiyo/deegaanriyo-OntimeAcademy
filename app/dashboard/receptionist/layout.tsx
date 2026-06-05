@@ -10,6 +10,7 @@ const NAV: NavSection[] = [
     items: [
       { href: "/dashboard/receptionist",          icon: "fa-th-large",     label: "Overview"      },
       { href: "/dashboard/receptionist/students", icon: "fa-user-graduate", label: "Students"     },
+      { href: "/dashboard/receptionist/teachers", icon: "fa-chalkboard-teacher", label: "Teachers"  },
       { href: "/dashboard/receptionist/members",  icon: "fa-id-card",       label: "Members"      },
       { href: "/dashboard/receptionist/bookings", icon: "fa-calendar-alt",  label: "Bookings"     },
       { href: "/dashboard/receptionist/visitors", icon: "fa-door-open",     label: "Walk-in"      },

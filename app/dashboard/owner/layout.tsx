@@ -65,8 +65,9 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
     {
       label: "People",
       items: [
-        { href: "/dashboard/owner/students", icon: "fa-user-graduate", label: "Students"  },
-        { href: "/dashboard/owner/members",  icon: "fa-id-card",       label: "Members"   },
+        { href: "/dashboard/owner/students", icon: "fa-user-graduate",      label: "Students"  },
+        { href: "/dashboard/owner/teachers", icon: "fa-chalkboard-teacher", label: "Teachers"  },
+        { href: "/dashboard/owner/members",  icon: "fa-id-card",            label: "Members"   },
       ],
     },
     {

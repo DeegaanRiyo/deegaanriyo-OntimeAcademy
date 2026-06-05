@@ -43,6 +43,7 @@ export async function PATCH(
       method?:             "cash" | "mpesa" | "bank_transfer" | "both";
       reference?:          string | null;
       notes?:              string | null;
+      teachers?:           { name: string; subject: string }[] | null;
     };
 
     const { error } = await admin

@@ -11,6 +11,8 @@ type FlagInfo = {
   created_at: string;
 };
 
+type Teacher = { name: string; subject: string };
+
 export type PhysicalStudent = {
   id:                  string;
   student_type:        "new" | "current_old" | "zoom_virtual";
@@ -18,6 +20,7 @@ export type PhysicalStudent = {
   phone:               string;
   email:               string | null;
   course_name:         string | null;
+  teachers:            Teacher[] | null;
   course_fee_monthly:  number | null;
   registration_fee:    number | null;
   total_due:           number | null;
@@ -185,6 +188,9 @@ function EditModal({ student, onClose, onSaved }: {
   const [phone,       setPhone]       = useState(student.phone);
   const [email,       setEmail]       = useState(student.email ?? "");
   const [courseName,  setCourseName]  = useState(student.course_name ?? "");
+  const [teachers,    setTeachers]    = useState<Teacher[]>(
+    student.teachers && student.teachers.length > 0 ? student.teachers : [{ name: "", subject: "" }]
+  );
   const [courseFee,   setCourseFee]   = useState(student.course_fee_monthly?.toString() ?? "");
   const [regFee,      setRegFee]      = useState(student.registration_fee?.toString() ?? "");
   const [totalDue,    setTotalDue]    = useState(student.total_due?.toString() ?? "");
@@ -218,6 +224,7 @@ function EditModal({ student, onClose, onSaved }: {
       customer_phone:      phone,
       customer_email:      email || null,
       course_name:         courseName.trim() || null,
+      teachers:            teachers.filter((t) => t.name.trim() || t.subject.trim()).map((t) => ({ name: t.name.trim(), subject: t.subject.trim() })),
       course_fee_monthly:  courseFee  ? Number(courseFee)  : null,
       registration_fee:    regFee     ? Number(regFee)     : null,
       total_due:           totalDue   ? Number(totalDue)   : null,
@@ -239,6 +246,7 @@ function EditModal({ student, onClose, onSaved }: {
         phone:              payload.customer_phone,
         email:              payload.customer_email,
         course_name:        payload.course_name,
+        teachers:           payload.teachers && payload.teachers.length > 0 ? payload.teachers : null,
         course_fee_monthly: payload.course_fee_monthly,
         registration_fee:   payload.registration_fee,
         total_due:          payload.total_due,
@@ -308,6 +316,50 @@ function EditModal({ student, onClose, onSaved }: {
           <div>
             <label style={F_LBL}>Course Enrolled</label>
             <input value={courseName} onChange={(e) => setCourseName(e.target.value)} placeholder="e.g. Arabic, Tajweed, Quran…" style={F_INP} />
+          </div>
+
+          {/* Teachers */}
+          <div>
+            <label style={{ ...F_LBL, marginBottom: 8 }}>Teachers</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {teachers.map((t, i) => (
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, alignItems: "end" }}>
+                  <div>
+                    {i === 0 && <label style={F_LBL}>Name</label>}
+                    <input
+                      value={t.name}
+                      onChange={(e) => setTeachers(teachers.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))}
+                      placeholder="e.g. Ustadh Ali"
+                      style={F_INP}
+                    />
+                  </div>
+                  <div>
+                    {i === 0 && <label style={F_LBL}>Subject</label>}
+                    <input
+                      value={t.subject}
+                      onChange={(e) => setTeachers(teachers.map((x, idx) => idx === i ? { ...x, subject: e.target.value } : x))}
+                      placeholder="e.g. English, Swahili"
+                      style={F_INP}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTeachers(teachers.filter((_, idx) => idx !== i))}
+                    disabled={teachers.length === 1}
+                    style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", background: teachers.length === 1 ? "rgba(17,17,17,.04)" : "rgba(220,38,38,.07)", border: "none", borderRadius: 6, cursor: teachers.length === 1 ? "default" : "pointer", color: teachers.length === 1 ? "rgba(17,17,17,.2)" : "#dc2626", fontSize: ".65rem", flexShrink: 0 }}
+                  >
+                    <i className="fas fa-minus" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setTeachers([...teachers, { name: "", subject: "" }])}
+                style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 5, height: 28, padding: "0 10px", background: "rgba(17,17,17,.04)", border: "1px dashed rgba(17,17,17,.18)", borderRadius: 6, cursor: "pointer", color: "rgba(17,17,17,.5)", fontSize: ".72rem", fontWeight: 600 }}
+              >
+                <i className="fas fa-plus" style={{ fontSize: ".6rem" }} />Add Teacher
+              </button>
+            </div>
           </div>
 
           {/* Fees */}
@@ -462,6 +514,7 @@ function PhysicalTable({ students, accentColor }: { students: PhysicalStudent[];
             <tr>
               <th style={TH}>Student</th>
               <th style={TH}>Course</th>
+              <th style={TH}>Teachers</th>
               <th style={TH}>Phone</th>
               <th style={TH}>Email</th>
               <th style={TH}>Monthly Fee</th>
@@ -520,6 +573,24 @@ function PhysicalTable({ students, accentColor }: { students: PhysicalStudent[];
                       {s.course_name
                         ? <span style={{ fontWeight: 600, color: "var(--dark)" }}>{s.course_name}</span>
                         : <span style={{ color: "rgba(17,17,17,.22)" }}>—</span>}
+                    </td>
+
+                    {/* Teachers */}
+                    <td style={TDm}>
+                      {s.teachers && s.teachers.length > 0 ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                          {s.teachers.map((t, i) => (
+                            <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>
+                              <span style={{ fontWeight: 600, color: "var(--dark)", fontSize: ".75rem" }}>{t.name}</span>
+                              {t.subject && (
+                                <span style={{ fontSize: ".6rem", background: "rgba(17,17,17,.06)", color: "#4B5563", borderRadius: 4, padding: "1px 5px" }}>{t.subject}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{ color: "rgba(17,17,17,.22)" }}>—</span>
+                      )}
                     </td>
 
                     {/* Phone */}
@@ -616,7 +687,7 @@ function PhysicalTable({ students, accentColor }: { students: PhysicalStudent[];
                   {/* Inline flag panel */}
                   {hasFlagOpen && isExpanded && (
                     <tr style={{ borderBottom: "1px solid rgba(17,17,17,.045)", borderLeft: "2px solid rgba(220,38,38,.3)", background: "rgba(220,38,38,.018)" }}>
-                      <td colSpan={13} style={{ padding: "0 14px 10px 54px" }}>
+                      <td colSpan={14} style={{ padding: "0 14px 10px 54px" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           {visFlags.map((f) => (
                             <div key={f.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "8px 12px", background: "rgba(220,38,38,.05)", border: "1px solid rgba(220,38,38,.12)", borderRadius: 6 }}>
