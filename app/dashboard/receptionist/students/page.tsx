@@ -141,6 +141,8 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
   const [fullName,     setFullName]     = useState("");
   const [phone,        setPhone]        = useState("");
   const [email,        setEmail]        = useState("");
+  const [joinedDate,   setJoinedDate]   = useState(new Date().toLocaleDateString("en-CA"));
+  const [classTime,    setClassTime]    = useState("");
   const [courseName,   setCourseName]   = useState("");
   const [courseFee,    setCourseFee]    = useState("");   // monthly course fee
   const [regFee,       setRegFee]       = useState("");   // one-time registration fee (new only)
@@ -170,6 +172,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
 
   function reset() {
     setFullName(""); setPhone(""); setEmail(""); setCourseName("");
+    setJoinedDate(new Date().toLocaleDateString("en-CA")); setClassTime("");
     setCourseFee(""); setRegFee(""); setAmountPaid("");
     setMethod("cash"); setReference(""); setNotes("");
     setStudentType("new");
@@ -192,6 +195,8 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
           customer_name:       fullName,
           customer_phone:      phone,
           customer_email:      email      || undefined,
+          joined_date:         joinedDate || undefined,
+          class_time:          classTime  || undefined,
           course_name:         courseName || undefined,
           course_fee_monthly:  monthly    || undefined,
           registration_fee:    regF > 0   ? regF     : undefined,
@@ -300,6 +305,14 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
                 <div>
                   <label style={F_LBL}>Email Address</label>
                   <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ahmed@email.com" style={F_INP} />
+                </div>
+                <div>
+                  <label style={F_LBL}>Date Joined</label>
+                  <input type="date" value={joinedDate} onChange={(e) => setJoinedDate(e.target.value)} style={F_INP} />
+                </div>
+                <div>
+                  <label style={F_LBL}>Class Time</label>
+                  <input type="time" value={classTime} onChange={(e) => setClassTime(e.target.value)} placeholder="e.g. 10:00" style={F_INP} />
                 </div>
               </div>
             </div>

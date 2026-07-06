@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json() as {
       full_name:      string;
-      email:          string;
+      email?:         string;
       phone:          string;
       profession?:    string;
       membership_fee: number;
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
     const { full_name, email, phone, profession, membership_fee, amount, method, reference, notes, joined_date } = body;
 
-    if (!full_name?.trim() || !email?.trim() || !phone?.trim() || !method) {
+    if (!full_name?.trim() || !phone?.trim() || !method) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
     if (!membership_fee || membership_fee <= 0) {
@@ -56,37 +56,56 @@ export async function POST(req: NextRequest) {
     }
 
     const amountPaid = Math.round(Number(amount) || 0);
+    const hasEmail   = !!email?.trim();
 
-    const password = tempPassword();
+    let userId: string;
+    let password: string | null = null;
 
-    // Create auth user directly — no invite email, works in dev and production
-    const { data: created, error: createError } =
-      await admin.auth.admin.createUser({
-        email:            email.trim(),
-        password,
-        email_confirm:    true,            // mark email as confirmed — no verification needed
-        user_metadata:    { role: "member", full_name: full_name.trim() },
+    if (hasEmail) {
+      // Create a full platform account so the member can log in
+      password = tempPassword();
+      const { data: created, error: createError } =
+        await admin.auth.admin.createUser({
+          email:         email!.trim(),
+          password,
+          email_confirm: true,
+          user_metadata: { role: "member", full_name: full_name.trim() },
+        });
+
+      if (createError) {
+        return NextResponse.json({ error: createError.message }, { status: 400 });
+      }
+      if (!created.user?.id) {
+        return NextResponse.json({ error: "Failed to create account" }, { status: 500 });
+      }
+      userId = created.user.id;
+
+      // Upsert profile
+      const { error: profileError } = await admin.from("profiles").upsert({
+        id:        userId,
+        email:     email!.trim(),
+        full_name: full_name.trim(),
+        phone:     phone.trim(),
+        role:      "member",
       });
-
-    if (createError) {
-      return NextResponse.json({ error: createError.message }, { status: 400 });
-    }
-
-    const userId = created.user?.id;
-    if (!userId) {
-      return NextResponse.json({ error: "Failed to create account" }, { status: 500 });
-    }
-
-    // Upsert profile
-    const { error: profileError } = await admin.from("profiles").upsert({
-      id:        userId,
-      email:     email.trim(),
-      full_name: full_name.trim(),
-      phone:     phone.trim(),
-      role:      "member",
-    });
-    if (profileError) {
-      return NextResponse.json({ error: profileError.message }, { status: 500 });
+      if (profileError) {
+        return NextResponse.json({ error: profileError.message }, { status: 500 });
+      }
+    } else {
+      // No email — create a walk-in profile row without an auth account
+      const { data: profile, error: profileError } = await admin
+        .from("profiles")
+        .insert({
+          full_name: full_name.trim(),
+          phone:     phone.trim(),
+          role:      "member",
+        })
+        .select("id")
+        .single();
+      if (profileError) {
+        return NextResponse.json({ error: profileError.message }, { status: 500 });
+      }
+      userId = profile.id;
     }
 
     // Create members row — 30-day subscription from joined_date (or today)
@@ -133,13 +152,13 @@ export async function POST(req: NextRequest) {
       paymentId = payment.id;
     }
 
-    // Return temp password so receptionist can hand it to the member
+    // Return temp password only when an auth account was created
     return NextResponse.json({
       success:       true,
       member_id:     userId,
       profile_id:    userId,
       payment_id:    paymentId,
-      temp_password: password,
+      temp_password: password ?? null,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unexpected error";

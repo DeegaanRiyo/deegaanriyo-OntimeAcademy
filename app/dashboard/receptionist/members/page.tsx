@@ -129,11 +129,17 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
               <div style={{ fontWeight: 700, color: "#16a34a", marginBottom: "10px" }}>
                 <i className="fas fa-check-circle" style={{ marginRight: "7px" }} />{success.name} registered
               </div>
-              <div style={{ fontSize: ".8rem", color: "var(--muted)", marginBottom: "10px" }}>Hand these login credentials to the member:</div>
-              <div style={{ background: "rgba(17,17,17,.04)", borderRadius: "8px", padding: "10px 14px", fontSize: ".85rem", border: "1px solid rgba(17,17,17,.1)" }}>
-                <div style={{ marginBottom: "5px" }}><span style={{ color: "var(--muted)" }}>Email: </span><strong style={{ color: "var(--dark)" }}>{success.email}</strong></div>
-                <div><span style={{ color: "var(--muted)" }}>Temp Password: </span><strong style={{ color: "var(--teal2)", letterSpacing: ".05em" }}>{success.temp_password}</strong></div>
-              </div>
+              {success.temp_password ? (
+                <>
+                  <div style={{ fontSize: ".8rem", color: "var(--muted)", marginBottom: "10px" }}>Hand these login credentials to the member:</div>
+                  <div style={{ background: "rgba(17,17,17,.04)", borderRadius: "8px", padding: "10px 14px", fontSize: ".85rem", border: "1px solid rgba(17,17,17,.1)" }}>
+                    <div style={{ marginBottom: "5px" }}><span style={{ color: "var(--muted)" }}>Email: </span><strong style={{ color: "var(--dark)" }}>{success.email}</strong></div>
+                    <div><span style={{ color: "var(--muted)" }}>Temp Password: </span><strong style={{ color: "var(--teal2)", letterSpacing: ".05em" }}>{success.temp_password}</strong></div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: ".8rem", color: "var(--muted)" }}>Walk-in member registered — no platform account created (no email provided).</div>
+              )}
             </div>
             <div style={{ display: "flex", gap: "10px" }}>
               {success.payment_id && (
@@ -154,7 +160,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
               <div><label style={lbl}>Full Name *</label><input value={form.full_name} onChange={set("full_name")} placeholder="Jane Mwangi" required style={inp} /></div>
               <div><label style={lbl}>Phone *</label><input value={form.phone} onChange={set("phone")} placeholder="07XX XXX XXX" required style={inp} /></div>
-              <div><label style={lbl}>Email *</label><input type="email" value={form.email} onChange={set("email")} placeholder="jane@email.com" required style={inp} /></div>
+              <div><label style={lbl}>Email</label><input type="email" value={form.email} onChange={set("email")} placeholder="jane@email.com" style={inp} /></div>
               <div><label style={lbl}>Profession</label><input value={form.profession} onChange={set("profession")} placeholder="e.g. Freelance Designer" style={inp} /></div>
               <div>
                 <label style={lbl}>Joined Date *</label>
