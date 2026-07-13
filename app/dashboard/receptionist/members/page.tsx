@@ -76,7 +76,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
   const [form, setForm] = useState({
     full_name: "", email: "", phone: "", profession: "",
     method: "cash", reference: "", notes: "",
-    membership_fee: 7500,
+    membership_fee: "",
     amount_paid: 0,
     joined_date: new Date().toLocaleDateString("en-CA"),
   });
@@ -154,7 +154,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
           <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
             <div style={{ background: "rgba(193,68,14,.06)", border: "1px solid rgba(193,68,14,.2)", borderRadius: "8px", padding: "10px 14px", fontSize: ".8rem", color: "var(--teal2)" }}>
               <i className="fas fa-info-circle" style={{ marginRight: "7px" }} />
-              Co-working membership · <strong>KES 7,500/month</strong> · 30-day subscription
+              Co-working membership · 30-day subscription
             </div>
             {error && <div style={{ background: "rgba(220,38,38,.08)", border: "1px solid rgba(220,38,38,.25)", borderRadius: "7px", padding: "10px 14px", color: "#dc2626", fontSize: ".8rem" }}>{error}</div>}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
@@ -167,7 +167,11 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
                 <input type="date" value={form.joined_date} onChange={set("joined_date")} required style={inp} />
                 <div style={{ fontSize: ".62rem", color: "var(--muted)", marginTop: "3px" }}>Subscription starts this date · expires +30 days</div>
               </div>
-              <div><label style={lbl}>Membership Fee (KES)</label><input value={form.membership_fee.toLocaleString()} readOnly style={{ ...inp, background: "rgba(17,17,17,.02)", color: "var(--muted)", cursor: "not-allowed" }} /></div>
+              <div>
+                <label style={lbl}>Membership Fee (KES) *</label>
+                <input type="number" min="1" value={form.membership_fee} onChange={set("membership_fee")} placeholder="e.g. 7500" required style={inp} />
+                <div style={{ fontSize: ".62rem", color: "var(--muted)", marginTop: "3px" }}>Monthly subscription amount for this member</div>
+              </div>
               <div>
                 <label style={lbl}>Amount Paid (KES)</label>
                 <input type="number" min="0" value={form.amount_paid} onChange={set("amount_paid")} placeholder="0 if paying later" style={inp} />
@@ -186,9 +190,11 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
             </div>
             <div style={{ marginTop: "-4px" }}>
               {(() => {
+                const fee  = Number(form.membership_fee) || 0;
                 const paid = Number(form.amount_paid) || 0;
-                const bal  = Number(form.membership_fee) - paid;
-                if (paid === 0) return <div style={{ color: "#b45309", fontSize: ".82rem", fontWeight: 700 }}>⚠ No payment — KES {Number(form.membership_fee).toLocaleString()} due later</div>;
+                if (!fee) return <div style={{ color: "var(--muted)", fontSize: ".82rem" }}>Enter the membership fee above</div>;
+                const bal  = fee - paid;
+                if (paid === 0) return <div style={{ color: "#b45309", fontSize: ".82rem", fontWeight: 700 }}>⚠ No payment — KES {fee.toLocaleString()} due later</div>;
                 if (bal > 0)   return <div style={{ color: "#dc2626", fontSize: ".82rem", fontWeight: 700 }}>Balance Due: KES {bal.toLocaleString()}</div>;
                 if (bal === 0) return <div style={{ color: "#16a34a", fontSize: ".82rem", fontWeight: 700 }}>✓ Fully Paid</div>;
                 return              <div style={{ color: "#b45309", fontSize: ".82rem", fontWeight: 700 }}>Overpaid by KES {Math.abs(bal).toLocaleString()}</div>;

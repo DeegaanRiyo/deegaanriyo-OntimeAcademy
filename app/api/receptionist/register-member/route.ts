@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       profession?:    string;
       membership_fee: number;
       amount:         number;
-      method:         "cash" | "mpesa" | "bank_transfer";
+      method:         "cash" | "mpesa";
       reference?:     string;
       notes?:         string;
       joined_date?:   string;   // YYYY-MM-DD; defaults to today if omitted
@@ -122,6 +122,7 @@ export async function POST(req: NextRequest) {
       id:                 userId,
       slug,
       profession:         profession?.trim() || null,
+      membership_fee:     Math.round(membership_fee),
       subscription_start: subStart,
       subscription_end:   subEnd,
       is_active:          true,

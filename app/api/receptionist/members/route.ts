@@ -10,8 +10,6 @@ function serviceClient() {
   );
 }
 
-const MEMBERSHIP_FEE = 7500;
-
 // GET /api/receptionist/members
 // Returns all co-working members with subscription + payment summary
 export async function GET() {
@@ -31,7 +29,7 @@ export async function GET() {
     // 1. All members rows (only real subscribers) + joined profile fields
     const { data: membersData, error: membersErr } = await admin
       .from("members")
-      .select("id, is_active, subscription_start, subscription_end, profession, profile:profiles!members_id_fkey(id, full_name, email, phone)")
+      .select("id, is_active, subscription_start, subscription_end, profession, membership_fee, profile:profiles!members_id_fkey(id, full_name, email, phone)")
       .order("created_at", { ascending: false });
 
     if (membersErr) return NextResponse.json({ error: membersErr.message }, { status: 500 });
@@ -71,9 +69,10 @@ export async function GET() {
         ? profilePayments.filter((pay) => pay.created_at.slice(0, 10) >= subStart)
         : profilePayments;
 
+      const fee         = m.membership_fee ?? 7500;
       const periodPaid  = periodPayments.reduce((s: number, pay: any) => s + (pay.amount ?? 0), 0);
       const totalPaid   = profilePayments.reduce((s: number, pay: any) => s + (pay.amount ?? 0), 0);
-      const outstanding = Math.max(0, MEMBERSHIP_FEE - periodPaid);
+      const outstanding = Math.max(0, fee - periodPaid);
 
       const latestPayment = profilePayments[0] ?? null;
 
@@ -85,7 +84,7 @@ export async function GET() {
         email:              p.email     ?? null,
         profile_id:         m.id,
         profession:         m.profession ?? null,
-        amount:             MEMBERSHIP_FEE,
+        amount:             fee,
         total_paid:         totalPaid,
         period_paid:        periodPaid,
         outstanding,
