@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const ALLOWED_ROLES = ["owner", "manager", "receptionist"];
-
-function service() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export async function GET(
   _req: NextRequest,
@@ -19,7 +12,7 @@ export async function GET(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const svc = service();
+  const svc = createAdminClient();
 
   const { data: profile } = await svc
     .from("profiles").select("role").eq("id", user.id).single();
@@ -78,7 +71,7 @@ export async function PATCH(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const svc = service();
+  const svc = createAdminClient();
 
   const { data: profile } = await svc
     .from("profiles").select("role").eq("id", user.id).single();
@@ -151,7 +144,7 @@ export async function DELETE(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const svc = service();
+  const svc = createAdminClient();
 
   const { data: profile } = await svc
     .from("profiles").select("role").eq("id", user.id).single();

@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createServerClient } from "@supabase/ssr";
-
-function createServiceClient() {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { getAll: () => [], setAll: () => {} } }
-  );
-}
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function PATCH(
   request: NextRequest,
@@ -28,7 +20,7 @@ export async function PATCH(
       return NextResponse.json({ error: "action must be approve or reject" }, { status: 400 });
     }
 
-    const adminClient = createServiceClient();
+    const adminClient = createAdminClient();
 
     const { data: pwReq } = await adminClient
       .from("password_reset_requests")

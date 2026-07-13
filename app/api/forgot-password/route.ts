@@ -1,13 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-
-function createServiceClient() {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { getAll: () => [], setAll: () => {} } }
-  );
-}
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // POST /api/forgot-password
 // Public — no auth required.
@@ -18,7 +10,7 @@ export async function POST(request: NextRequest) {
     if (!username?.trim())
       return NextResponse.json({ error: "Username is required" }, { status: 400 });
 
-    const supabase = createServiceClient();
+    const supabase = createAdminClient();
 
     // Look up the profile by username
     const { data: profile } = await supabase

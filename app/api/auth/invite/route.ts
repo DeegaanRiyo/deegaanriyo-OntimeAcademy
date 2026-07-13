@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@/lib/supabase/server";
-
-function createServiceClient() {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { getAll: () => [], setAll: () => {} } }
-  );
-}
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Send invite via Supabase Admin API
-    const adminClient = createServiceClient();
+    const adminClient = createAdminClient();
     const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
       data:        { role },
       redirectTo:  `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?type=invite`,

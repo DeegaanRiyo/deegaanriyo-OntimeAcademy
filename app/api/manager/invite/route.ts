@@ -1,13 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
-
-function getServiceClient() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +8,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const adminClient = getServiceClient();
+    const adminClient = createAdminClient();
 
     const { data: profile } = await adminClient
       .from("profiles").select("role").eq("id", user.id).single();
@@ -61,7 +54,7 @@ export async function DELETE(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const serviceClient = getServiceClient();
+    const serviceClient = createAdminClient();
 
     const { data: profile } = await serviceClient
       .from("profiles").select("role").eq("id", user.id).single();

@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createServerClient } from "@supabase/ssr";
-
-function serviceClient() {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { getAll: () => [], setAll: () => {} } }
-  );
-}
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function DELETE(
   _req: NextRequest,
@@ -19,7 +11,7 @@ export async function DELETE(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const admin = serviceClient();
+    const admin = createAdminClient();
     const { data: caller } = await admin
       .from("profiles").select("role").eq("id", user.id).single();
 
