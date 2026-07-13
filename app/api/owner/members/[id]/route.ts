@@ -38,6 +38,12 @@ export async function DELETE(
 
     if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
 
+    // Delete the profile row
+    await admin.from("profiles").delete().eq("id", id);
+
+    // Delete the auth account (if one exists — walk-in members won't have one)
+    await admin.auth.admin.deleteUser(id).catch(() => {});
+
     return NextResponse.json({ success: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unexpected error";
