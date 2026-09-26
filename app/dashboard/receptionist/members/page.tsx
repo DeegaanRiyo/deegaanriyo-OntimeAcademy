@@ -20,6 +20,7 @@ type Member = {
   payment_date:       string;
   sub_start:          string | null;
   due_date:           string | null;
+  subscription_days:  number;
   recorded_by_name:   string | null;
   payment_created_at: string | null;
 };
@@ -79,6 +80,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
     membership_fee: "",
     amount_paid: 0,
     joined_date: new Date().toLocaleDateString("en-CA"),
+    subscription_days: "30",
   });
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
@@ -97,7 +99,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
       const res  = await fetch("/api/receptionist/register-member", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, membership_fee: fee, amount: amtPaid, joined_date: form.joined_date }),
+        body: JSON.stringify({ ...form, membership_fee: fee, amount: amtPaid, joined_date: form.joined_date, subscription_days: Number(form.subscription_days) || 30 }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Failed");
@@ -154,7 +156,7 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
           <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
             <div style={{ background: "rgba(193,68,14,.06)", border: "1px solid rgba(193,68,14,.2)", borderRadius: "8px", padding: "10px 14px", fontSize: ".8rem", color: "var(--teal2)" }}>
               <i className="fas fa-info-circle" style={{ marginRight: "7px" }} />
-              Co-working membership · 30-day subscription
+              Co-working membership · {form.subscription_days}-day subscription
             </div>
             {error && <div style={{ background: "rgba(220,38,38,.08)", border: "1px solid rgba(220,38,38,.25)", borderRadius: "7px", padding: "10px 14px", color: "#dc2626", fontSize: ".8rem" }}>{error}</div>}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
@@ -165,7 +167,18 @@ function RegisterModal({ onClose, onRegistered }: { onClose: () => void; onRegis
               <div>
                 <label style={lbl}>Joined Date *</label>
                 <input type="date" value={form.joined_date} onChange={set("joined_date")} required style={inp} />
-                <div style={{ fontSize: ".62rem", color: "var(--muted)", marginTop: "3px" }}>Subscription starts this date · expires +30 days</div>
+                <div style={{ fontSize: ".62rem", color: "var(--muted)", marginTop: "3px" }}>Subscription starts this date</div>
+              </div>
+              <div>
+                <label style={lbl}>Subscription Duration *</label>
+                <select value={form.subscription_days} onChange={set("subscription_days")} style={inp}>
+                  <option value="7">7 days (1 week)</option>
+                  <option value="14">14 days (2 weeks)</option>
+                  <option value="30">30 days (1 month)</option>
+                  <option value="60">60 days (2 months)</option>
+                  <option value="90">90 days (3 months)</option>
+                </select>
+                <div style={{ fontSize: ".62rem", color: "var(--muted)", marginTop: "3px" }}>How long this subscription lasts</div>
               </div>
               <div>
                 <label style={lbl}>Membership Fee (KES) *</label>
@@ -283,6 +296,132 @@ function PaymentModal({ member, onClose, onDone }: { member: Member; onClose: ()
   );
 }
 
+// ─── Renew Subscription Modal ─────────────────────────────────────────────────
+
+function RenewModal({ member, onClose, onDone }: { member: Member; onClose: () => void; onDone: () => void }) {
+  const [days,    setDays]    = useState(String(member.subscription_days || 30));
+  const [amount,  setAmount]  = useState(String(member.amount || ""));
+  const [method,  setMethod]  = useState("cash");
+  const [ref,     setRef]     = useState("");
+  const [payNow,  setPayNow]  = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+
+  const inp: React.CSSProperties = { width: "100%", background: "rgba(17,17,17,.04)", border: "1px solid rgba(17,17,17,.15)", borderRadius: "8px", padding: "9px 12px", color: "var(--dark)", fontSize: ".85rem", outline: "none", boxSizing: "border-box" };
+  const lbl: React.CSSProperties = { display: "block", fontSize: ".65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "var(--muted)", marginBottom: "5px" };
+
+  const newEnd = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + (Number(days) || 30));
+    return d.toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" });
+  })();
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!member.profile_id) { setError("No member account linked."); return; }
+    setLoading(true);
+    try {
+      const payload: any = {
+        profile_id: member.profile_id,
+        subscription_days: Number(days) || 30,
+      };
+      if (payNow && Number(amount) > 0) {
+        payload.amount = Number(amount);
+        payload.method = method;
+        if (ref) payload.reference = ref;
+      }
+      const res  = await fetch("/api/receptionist/renew-member", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed");
+      onDone(); onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: "16px" }} onClick={onClose}>
+      <div className="card" style={{ maxWidth: "420px", width: "100%", padding: "24px", gap: 0 }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <h3 style={{ margin: 0, color: "var(--dark)" }}>
+            <i className="fas fa-sync-alt" style={{ color: "#16a34a", marginRight: "8px" }} />Renew Subscription
+          </h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><i className="fas fa-times" /></button>
+        </div>
+
+        {/* Member info */}
+        <div style={{ background: "rgba(17,17,17,.04)", borderRadius: "8px", padding: "10px 14px", marginBottom: "14px", fontSize: ".82rem", border: "1px solid rgba(17,17,17,.1)" }}>
+          <div style={{ fontWeight: 700, color: "var(--dark)" }}>{member.name}</div>
+          <div style={{ display: "flex", gap: "16px", marginTop: "4px", fontSize: ".72rem", color: "var(--muted)" }}>
+            <span>Fee: KES {member.amount.toLocaleString()}</span>
+            {member.due_date && <span>Expired: {fmtDate(member.due_date)}</span>}
+          </div>
+        </div>
+
+        <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {error && <div style={{ color: "#dc2626", fontSize: ".78rem", background: "rgba(220,38,38,.08)", border: "1px solid rgba(220,38,38,.25)", borderRadius: "7px", padding: "8px 12px" }}>{error}</div>}
+
+          <div>
+            <label style={lbl}>Subscription Duration</label>
+            <select value={days} onChange={(e) => setDays(e.target.value)} style={inp}>
+              <option value="7">7 days (1 week)</option>
+              <option value="14">14 days (2 weeks)</option>
+              <option value="30">30 days (1 month)</option>
+              <option value="60">60 days (2 months)</option>
+              <option value="90">90 days (3 months)</option>
+            </select>
+            <div style={{ fontSize: ".68rem", color: "#16a34a", marginTop: "4px", fontWeight: 600 }}>
+              New expiry: {newEnd}
+            </div>
+          </div>
+
+          {/* Pay now toggle */}
+          <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: ".82rem", color: "var(--dark)", cursor: "pointer" }}>
+            <input type="checkbox" checked={payNow} onChange={(e) => setPayNow(e.target.checked)} style={{ width: "16px", height: "16px" }} />
+            Record payment now
+          </label>
+
+          {payNow && (
+            <>
+              <div>
+                <label style={lbl}>Amount (KES)</label>
+                <input type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 7500" style={inp} />
+              </div>
+              <div>
+                <label style={lbl}>Method</label>
+                <select value={method} onChange={(e) => setMethod(e.target.value)} style={inp}>
+                  <option value="cash">Cash</option>
+                  <option value="mpesa">M-Pesa</option>
+                </select>
+              </div>
+              {method === "mpesa" && (
+                <div>
+                  <label style={lbl}>M-Pesa Code</label>
+                  <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="e.g. QA12BCD3E4" style={inp} />
+                </div>
+              )}
+            </>
+          )}
+
+          <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+            <button type="submit" disabled={loading || !member.profile_id}
+              style={{ flex: 1, padding: "9px 16px", borderRadius: "8px", border: "none", background: "#16a34a", color: "#fff", fontWeight: 700, fontSize: ".85rem", cursor: "pointer", opacity: loading ? .6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
+              {loading ? <><i className="fas fa-spinner fa-spin" />Renewing...</> : <><i className="fas fa-sync-alt" />Renew for {days} days</>}
+            </button>
+            <button type="button" className="btn-outline" onClick={onClose}>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ─── Member Flag Modal ────────────────────────────────────────────────────────
 
 function MemberFlagModal({ member, onClose }: { member: Member; onClose: () => void }) {
@@ -372,6 +511,134 @@ function MemberFlagModal({ member, onClose }: { member: Member; onClose: () => v
   );
 }
 
+// ─── Edit Member Modal ───────────────────────────────────────────────────────
+
+function EditModal({ member, onClose, onDone }: { member: Member; onClose: () => void; onDone: () => void }) {
+  const [form, setForm] = useState({
+    full_name:      member.name,
+    phone:          member.phone,
+    email:          member.email ?? "",
+    profession:     member.profession ?? "",
+    membership_fee: String(member.amount || ""),
+  });
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+
+  const inp: React.CSSProperties = { width: "100%", background: "rgba(17,17,17,.04)", border: "1px solid rgba(17,17,17,.15)", borderRadius: "8px", padding: "9px 12px", color: "var(--dark)", fontSize: ".85rem", outline: "none", boxSizing: "border-box" };
+  const lbl: React.CSSProperties = { display: "block", fontSize: ".65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "var(--muted)", marginBottom: "5px" };
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!form.full_name.trim()) { setError("Name is required."); return; }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/receptionist/edit-member", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profile_id:     member.profile_id ?? member.id,
+          full_name:      form.full_name,
+          phone:          form.phone,
+          email:          form.email,
+          profession:     form.profession,
+          membership_fee: Number(form.membership_fee) || 0,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed");
+      onDone(); onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: "16px" }} onClick={onClose}>
+      <div className="card" style={{ maxWidth: "420px", width: "100%", padding: "24px", gap: 0 }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <h3 style={{ margin: 0, color: "var(--dark)" }}>
+            <i className="fas fa-pen" style={{ color: "var(--teal2)", marginRight: "8px" }} />Edit Member
+          </h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><i className="fas fa-times" /></button>
+        </div>
+        <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {error && <div style={{ color: "#dc2626", fontSize: ".78rem", background: "rgba(220,38,38,.08)", border: "1px solid rgba(220,38,38,.25)", borderRadius: "7px", padding: "8px 12px" }}>{error}</div>}
+          <div><label style={lbl}>Full Name *</label><input value={form.full_name} onChange={set("full_name")} required style={inp} /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div><label style={lbl}>Phone</label><input value={form.phone} onChange={set("phone")} style={inp} /></div>
+            <div><label style={lbl}>Email</label><input type="email" value={form.email} onChange={set("email")} style={inp} /></div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div><label style={lbl}>Profession</label><input value={form.profession} onChange={set("profession")} style={inp} /></div>
+            <div><label style={lbl}>Membership Fee (KES)</label><input type="number" min="0" value={form.membership_fee} onChange={set("membership_fee")} style={inp} /></div>
+          </div>
+          <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+            <button type="submit" className="btn-primary" disabled={loading} style={{ flex: 1, border: "none", cursor: "pointer" }}>
+              {loading ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: "7px" }} />Saving...</> : <><i className="fas fa-check" style={{ marginRight: "7px" }} />Save Changes</>}
+            </button>
+            <button type="button" className="btn-outline" onClick={onClose}>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Delete Member Modal ─────────────────────────────────────────────────────
+
+function DeleteModal({ member, onClose, onDone }: { member: Member; onClose: () => void; onDone: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+
+  async function confirm() {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/receptionist/delete-member", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile_id: member.profile_id ?? member.id }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed");
+      onDone(); onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: "16px" }} onClick={onClose}>
+      <div className="card" style={{ maxWidth: "380px", width: "100%", padding: "24px", gap: 0 }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <h3 style={{ margin: 0, color: "#dc2626" }}>
+            <i className="fas fa-trash-alt" style={{ marginRight: "8px" }} />Remove Member
+          </h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><i className="fas fa-times" /></button>
+        </div>
+        <div style={{ background: "rgba(220,38,38,.06)", border: "1px solid rgba(220,38,38,.2)", borderRadius: "8px", padding: "14px", marginBottom: "16px", fontSize: ".82rem" }}>
+          <div style={{ fontWeight: 700, color: "var(--dark)", marginBottom: "4px" }}>{member.name}</div>
+          <div style={{ color: "#dc2626" }}>
+            This will remove the member from the dashboard. Payment history is kept for records.
+          </div>
+        </div>
+        {error && <div style={{ color: "#dc2626", fontSize: ".78rem", marginBottom: "12px" }}>{error}</div>}
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button onClick={confirm} disabled={loading}
+            style={{ flex: 1, padding: "9px 16px", borderRadius: "8px", border: "none", background: "#dc2626", color: "#fff", fontWeight: 700, fontSize: ".85rem", cursor: "pointer", opacity: loading ? .6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
+            {loading ? <><i className="fas fa-spinner fa-spin" />Removing...</> : <><i className="fas fa-trash-alt" />Yes, Remove</>}
+          </button>
+          <button onClick={onClose} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Table cell styles ─────────────────────────────────────────────────────────
 const TH: React.CSSProperties = {
   padding: "6px 12px", textAlign: "left", fontSize: ".55rem", fontWeight: 700,
@@ -389,8 +656,11 @@ export default function MembersPage() {
   const [search,   setSearch]   = useState("");
   const [openId,   setOpenId]   = useState<string | null>(null);
   const [showReg,  setShowReg]  = useState(false);
-  const [payTarget,  setPayTarget]  = useState<Member | null>(null);
-  const [flagTarget, setFlagTarget] = useState<Member | null>(null);
+  const [payTarget,    setPayTarget]    = useState<Member | null>(null);
+  const [renewTarget,  setRenewTarget]  = useState<Member | null>(null);
+  const [editTarget,   setEditTarget]   = useState<Member | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Member | null>(null);
+  const [flagTarget,   setFlagTarget]   = useState<Member | null>(null);
 
   function toggleExpand(id: string) { setOpenId(prev => prev === id ? null : id); }
 
@@ -411,6 +681,7 @@ export default function MembersPage() {
     (m.profession ?? "").toLowerCase().includes(q)
   );
 
+  const expired        = members.filter((m) => m.due_date && daysUntil(m.due_date) < 0).length;
   const expiringSoon   = members.filter((m) => m.due_date && daysUntil(m.due_date) >= 0 && daysUntil(m.due_date) <= 5).length;
   const hasOutstanding = members.filter((m) => m.outstanding > 0).length;
 
@@ -428,6 +699,12 @@ export default function MembersPage() {
       </div>
 
       {/* Alerts */}
+      {expired > 0 && (
+        <div style={{ background: "rgba(220,38,38,.06)", border: "1px solid rgba(220,38,38,.2)", borderRadius: "8px", padding: "10px 14px", marginBottom: "10px", display: "flex", alignItems: "center", gap: "10px", fontSize: ".8rem", color: "#dc2626" }}>
+          <i className="fas fa-clock" />
+          <strong>{expired}</strong> membership{expired > 1 ? "s" : ""} expired — click the <i className="fas fa-sync-alt" style={{ margin: "0 3px", fontSize: ".7rem" }} /> button to renew.
+        </div>
+      )}
       {expiringSoon > 0 && (
         <div style={{ background: "rgba(180,131,9,.07)", border: "1px solid rgba(180,131,9,.25)", borderRadius: "8px", padding: "10px 14px", marginBottom: "10px", display: "flex", alignItems: "center", gap: "10px", fontSize: ".8rem", color: "#b45309" }}>
           <i className="fas fa-exclamation-triangle" />
@@ -557,7 +834,7 @@ export default function MembersPage() {
                         {/* Status */}
                         <td style={TD}>
                           {(() => {
-                            if (!m.due_date) return <span style={{ fontSize: ".68rem", color: "rgba(17,17,17,.3)" }}>—</span>;
+                            if (!m.due_date) return <span className="badge" style={{ background: "rgba(17,17,17,.05)", color: "rgba(17,17,17,.4)" }}><span className="badge-dot" style={{ background: "rgba(17,17,17,.2)" }} />No Sub</span>;
                             const d = daysUntil(m.due_date);
                             if (d < 0)    return <span className="badge rd"><span className="badge-dot" />Expired</span>;
                             if (d <= 5)   return <span className="badge gd"><span className="badge-dot" />Expiring</span>;
@@ -578,6 +855,11 @@ export default function MembersPage() {
                         {/* Actions */}
                         <td style={{ ...TD, whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
                           <div style={{ display: "inline-flex", gap: "4px", alignItems: "center" }}>
+                            {((!m.due_date) || (m.due_date && daysUntil(m.due_date) <= 5)) && m.profile_id && (
+                              <button onClick={() => setRenewTarget(m)} title="Renew Subscription" style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(22,163,74,.09)", border: "none", borderRadius: "6px", cursor: "pointer", color: "#16a34a", fontSize: ".65rem" }}>
+                                <i className="fas fa-sync-alt" />
+                              </button>
+                            )}
                             {m.outstanding > 0 && m.profile_id && (
                               <button onClick={() => setPayTarget(m)} title="Record Payment" style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(180,83,9,.09)", border: "none", borderRadius: "6px", cursor: "pointer", color: "#b45309", fontSize: ".65rem" }}>
                                 <i className="fas fa-plus-circle" />
@@ -589,6 +871,12 @@ export default function MembersPage() {
                             <Link href={`/dashboard/receptionist/member-receipt/${m.profile_id ?? m.id}`} title="Print Receipt" style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6", border: "none", borderRadius: "6px", cursor: "pointer", color: "#6B7280", fontSize: ".65rem", textDecoration: "none" }}>
                               <i className="fas fa-receipt" />
                             </Link>
+                            <button onClick={() => setEditTarget(m)} title="Edit Member" style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(59,130,246,.08)", border: "none", borderRadius: "6px", cursor: "pointer", color: "#3b82f6", fontSize: ".65rem" }}>
+                              <i className="fas fa-pen" />
+                            </button>
+                            <button onClick={() => setDeleteTarget(m)} title="Remove Member" style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(220,38,38,.06)", border: "none", borderRadius: "6px", cursor: "pointer", color: "#dc2626", fontSize: ".65rem" }}>
+                              <i className="fas fa-trash-alt" />
+                            </button>
                             <button onClick={() => setFlagTarget(m)} title="Flag for Correction" style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F3F4F6", border: "none", borderRadius: "6px", cursor: "pointer", color: "#EF4444", fontSize: ".65rem" }}>
                               <i className="fas fa-flag" />
                             </button>
@@ -636,9 +924,12 @@ export default function MembersPage() {
         </div>
       )}
 
-      {showReg   && <RegisterModal onClose={() => setShowReg(false)} onRegistered={load} />}
-      {payTarget && <PaymentModal member={payTarget} onClose={() => setPayTarget(null)} onDone={load} />}
-      {flagTarget && <MemberFlagModal member={flagTarget} onClose={() => setFlagTarget(null)} />}
+      {showReg      && <RegisterModal onClose={() => setShowReg(false)} onRegistered={load} />}
+      {payTarget    && <PaymentModal member={payTarget} onClose={() => setPayTarget(null)} onDone={load} />}
+      {renewTarget  && <RenewModal member={renewTarget} onClose={() => setRenewTarget(null)} onDone={load} />}
+      {editTarget   && <EditModal member={editTarget} onClose={() => setEditTarget(null)} onDone={load} />}
+      {deleteTarget && <DeleteModal member={deleteTarget} onClose={() => setDeleteTarget(null)} onDone={load} />}
+      {flagTarget   && <MemberFlagModal member={flagTarget} onClose={() => setFlagTarget(null)} />}
     </div>
   );
 }

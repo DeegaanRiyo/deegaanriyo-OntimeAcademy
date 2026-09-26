@@ -26,19 +26,20 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json() as {
-      full_name:      string;
-      email?:         string;
-      phone:          string;
-      profession?:    string;
-      membership_fee: number;
-      amount:         number;
-      method:         "cash" | "mpesa";
-      reference?:     string;
-      notes?:         string;
-      joined_date?:   string;   // YYYY-MM-DD; defaults to today if omitted
+      full_name:         string;
+      email?:            string;
+      phone:             string;
+      profession?:       string;
+      membership_fee:    number;
+      amount:            number;
+      method:            "cash" | "mpesa";
+      reference?:        string;
+      notes?:            string;
+      joined_date?:      string;   // YYYY-MM-DD; defaults to today if omitted
+      subscription_days?: number;  // how many days the subscription lasts (default 30)
     };
 
-    const { full_name, email, phone, profession, membership_fee, amount, method, reference, notes, joined_date } = body;
+    const { full_name, email, phone, profession, membership_fee, amount, method, reference, notes, joined_date, subscription_days } = body;
 
     if (!full_name?.trim() || !phone?.trim() || !method) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -100,11 +101,12 @@ export async function POST(req: NextRequest) {
       userId = profile.id;
     }
 
-    // Create members row — 30-day subscription from joined_date (or today)
+    // Create members row — subscription from joined_date (or today)
+    const subDays  = subscription_days && subscription_days > 0 ? subscription_days : 30;
     const subStart = joined_date?.trim() || new Date().toISOString().slice(0, 10);
     const subEnd   = (() => {
       const d = new Date(subStart);
-      d.setDate(d.getDate() + 30);
+      d.setDate(d.getDate() + subDays);
       return d.toISOString().slice(0, 10);
     })();
     const slug     = full_name.trim().toLowerCase().replace(/\s+/g, "-")
@@ -117,6 +119,7 @@ export async function POST(req: NextRequest) {
       membership_fee:     Math.round(membership_fee),
       subscription_start: subStart,
       subscription_end:   subEnd,
+      subscription_days:  subDays,
       is_active:          true,
       is_public:          false,
     });

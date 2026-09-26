@@ -21,7 +21,8 @@ export async function GET() {
     // 1. All members rows (only real subscribers) + joined profile fields
     const { data: membersData, error: membersErr } = await admin
       .from("members")
-      .select("id, is_active, subscription_start, subscription_end, profession, membership_fee, profile:profiles!members_id_fkey(id, full_name, email, phone)")
+      .select("id, is_active, subscription_start, subscription_end, subscription_days, profession, membership_fee, deleted_at, profile:profiles!members_id_fkey(id, full_name, email, phone)")
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
     if (membersErr) return NextResponse.json({ error: membersErr.message }, { status: 500 });
@@ -86,6 +87,7 @@ export async function GET() {
         payment_date:       subStart ?? latestPayment?.created_at?.slice(0, 10) ?? "",
         sub_start:          subStart,
         due_date:           m.subscription_end ?? null,
+        subscription_days:  m.subscription_days ?? 30,
         recorded_by_name:   recordedById ? (recorderNames[recordedById] ?? null) : null,
         payment_created_at: latestPayment?.created_at ?? null,
       };
